@@ -1,0 +1,101 @@
+#!/bin/bash
+
+USAGE="$0 [-h] [-d path-to-drush] [-s sites-folder] [-t [-l]] [-x]"
+
+function _usage() {
+  echo $USAGE
+  cat <<EOF
+
+This function dumps all the databases in all the site of a drupal install.
+It requires drush to do the actual export.  
+
+-d path to drush
+  If drush is not in the path or a different version is to be used it can
+  be set using the -d flag
+-s path to the sites folder
+  This is the folder holding the foder for each site.  Defaults to 
+  /var/www/sites
+-t add time stamp
+-l include hours and minutesin the timestamp
+-x exclude those sites that are symlinks
+
+EOF
+}
+
+# TIMESTAMP=0
+# LONGTS=0
+
+while getopts "vhd:s:tlx" options; do
+  case $options in
+    h)  _usage; exit 0;;
+    d)  DRUSH="$OPTARG";;
+    s)  SITES="$OPTARG";;
+    t)  TIMESTAMP=1;;
+    l)  LONGTS=1;;
+    v)  VERBOSE=1;;
+    x)  IGNORE_SYM=1;;
+  esac
+done
+
+# check dependacies (drush)
+if [ -z "$DRUSH" ]; then
+  DRUSH=`which drush`
+fi
+
+if [ -z "$DRUSH" ]; then
+  echo 'Unable to function without drush, please install it an place it in the path'
+  exit 1
+fi
+
+if [ -z "$SITES" ]; then
+  SITES=/var/www/sites
+fi
+
+if [ $VERBOSE ]; then
+  echo -e "Using drush in\n\t$DRUSH\nUsing sites folder as\n\t$SITES"
+fi
+
+# list sites and get inode nubmers of the dirs, uniq them
+for x in `find $SITES -maxdepth 1`; do
+  if [ $VERBOSE ]; then echo; fi
+  basename=`basename $x`
+  if [ "$basename" == "all" -o "$basename" == "sites" ]; then
+    # skip
+    if [ $VERBOSE ]; then echo "Skip $basename"; fi
+    continue
+  fi
+  # if it's symlink and -a flag not passed skip
+  if [ -h $x -a "$IGNORE_SYM" == 1 ]; then
+    if [ $VERBOSE ]; then echo "Skip $basename (symlink)"; fi
+    continue
+  fi
+
+  if [ $VERBOSE ]; then echo $basename; fi
+  # check for a settings.php, skip if missing
+  if [ ! -e "$x/settings.php" ]; then
+    if [ $VERBOSE ]; then echo " No settings file in $x, skipping"; fi
+    continue
+  fi
+  # check/create dump folders
+  if [ ! -e "$x/dbdump" ]; then
+    mkdir -p $x/dbdump
+  fi
+  if [ ! -e "$x/dbdump/.htaccess" ]; then
+    echo "Order Deny, Allow\nDeny from all">$x/dbdump/.htaccess
+  fi
+  # dump db using drush
+  CMD=`dirname $0`/drupal-db-dump
+  if [ ! -z $TIMESTAMP ]; then
+    if [ ! -z $LONGTS ]; then
+      CMD="$CMD -t -l"
+    else
+      CMD="$CMD -t"
+    fi
+  fi
+  CMD="$CMD -s $x"
+  if [ $VERBOSE ]; then echo " Executing: $CMD"; fi
+  $CMD
+  # find files older then a week and remove all but the first one in each week
+  # find files older than a month and remove all but hte first of each month
+done
+

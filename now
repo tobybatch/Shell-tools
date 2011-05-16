@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [ "$1" == 'short' ]; then
+  date +"%y-%m-%d"
+else
+  date +"%y-%m-%d_%H-%M"
+fi

@@ -1,0 +1,78 @@
+#!/bin/bash
+
+USAGE="$0 configfile"
+
+if [ -z $1 ]; then
+    echo "Unable to proceed.  Config file not specified."
+    echo $USAGE
+    exit 1
+fi
+
+source $1
+
+# print_msg MESSAGE FLAG
+#
+# param MESSAGE The mnessage to print
+# param FLAG    If the flag is not empty print the message
+function print_msg {
+    if [ ! -z "$2" ]; then
+        echo $1
+    fi
+}
+
+print_msg "Using config file $1" $VERBOSE
+
+if [ -z $SSH_USER ]; then
+    echo "Cannot proceed without SSH_USER"
+    exit 2
+fi
+
+if [ -z $R_HOST ]; then
+    echo "Cannot proceed without R_HOST"
+    exit 4
+fi
+
+SSH_CON=$SSH_USER@$R_HOST
+
+print_msg "SSH_CON=$SSH_CON" $VERBOSE
+
+# run pre commands, here we could stop servers, flush dbs etc
+if [ ! -z "$R_PRECOMMAND" ]; then
+    print_msg "R_PRECOMMAND=$R_PRECOMMAND" $VERBOSE
+	ssh $SSH_CON "$R_PRECOMMAND"
+fi
+
+# dump remote db
+if [ ! -z "$R_DB_DUMP" ]; then
+    print_msg "R_DB_DUMP=$R_DB_DUMP" $VERBOSE
+	ssh $SSH_CON "$R_DB_DUMP>$R_DUMP_SQL"
+fi
+
+PROGRESS=''
+if [ ! -z $VERBOSE ]; then
+    PROGRESS="--progress"
+fi
+
+# sync file systems
+if [ ! -z "$R_TARGET" ]; then
+    print_msg "R_TARGET=$R_TARGET" $VERBOSE
+	rsync \
+        --exclude=".svn" \
+        $PROGRESS \
+        --delete \
+        -a \
+        $SSH_CON:$R_TARGET `dirname $R_TARGET`
+fi
+
+# run post commands
+if [ ! -z "$R_POSTCOMMAND" ]; then
+    print_msg "R_POSTCOMMAND=$R_POSTCOMMAND" $VERBOSE
+	ssh $SSH_CON "$R_POSTCOMMAND"
+fi
+
+if [ ! -z "$L_MYSQL" ]; then
+    # restore db
+    print_msg "Restoring DB [$L_MYSQL < $R_DUMP_SQL]" $VERBOSE
+    $L_MYSQL < $R_DUMP_SQL
+    $L_MYSQL -e "FLUSH PRIVILEGES;"
+fi

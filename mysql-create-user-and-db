@@ -1,0 +1,124 @@
+#!/bin/bash
+
+NO_ARGS=0
+USAGE="`basename $0` -u username [-p password] [-h hostname] [-n dbname]"
+
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
+if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
+then
+    echo $USAGE
+    cat <<EOF
+
+Connects to the mysql host specified as root and checks for the existance of the
+named DB and user.  The DB connection will be made as root using the environment
+variable MYSQL_ROOT_PASSWORD.  If the environment variable is not set it will 
+prompt for a password on the command line.
+
+If the user or database exists it exists with a code of -1.
+
+The username is mandatory and the password and dbname will default to the 
+username for this check if not specified.  The hostname will default to local 
+host.  If the user and database do not exist this script will create a database
+and user matching the specified details and give that user full permissions 
+over the new database
+EOF
+    exit 1
+fi
+
+while getopts "u:p:h:n:" options; do
+    case $options in
+        u)  user="$OPTARG";;
+        p)  pass="$OPTARG";;
+        h)  host="$OPTARG";;
+        n)  name="$OPTARG";;
+    esac
+done
+
+if [ -z $user ]
+then
+    echo $USAGE
+    exit 1
+fi
+
+
+if [ -z $pass ]
+then
+    until [ "$a" == 'y' ]; do
+      pass=`randpass`
+      echo -e $COL_YELLOW"Password currently set to $pass"$COL_RESET
+      echo -e $COL_GREEN"Accept or generate a new password (y/n)"$COL_RESET
+      read a
+    done
+fi
+
+if [ -z $host ]
+then
+    host=localhost
+fi
+
+if [ -z $name ]
+then
+    name=$user
+fi
+
+if [ -z $MYSQL_ROOT_PASSWORD ]
+then
+    echo -e $COL_CYAN"Enter the root password for your MySQL instance:"$COL_RESET
+    stty -echo
+    read mysqlroot
+    stty echo
+else
+    mysqlroot=$MYSQL_ROOT_PASSWORD
+fi
+
+MYSQL_ROOT_PASSWORD=$mysqlroot mysql-checkuser -u $user -p $pass -h $host -n $name
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"User or database exists, aborting"$COL_RESET
+    exit 2
+fi
+
+mysql -u root -p$mysqlroot -h $host -s -e "CREATE USER '$user'@'$host' IDENTIFIED BY '$pass';"
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"Failed to create user"$COL_RESET
+    exit 3
+else
+    echo -e $COL_GREEN"User created"$COL_RESET
+fi
+
+mysql -u root -p$mysqlroot -h $host -s -e "GRANT USAGE ON * . * TO '$user'@'$host' IDENTIFIED BY '$pass' WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0 ;"
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"Usage grant failed$user"$COL_RESET
+    exit 4
+else
+    echo -e $COL_GREEN"Usage granted "$COL_RESET
+fi
+
+mysql -u root -p$mysqlroot -h $host -s -e "CREATE DATABASE IF NOT EXISTS \`$name\` ;"
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"Database create failed"$COL_RESET
+    exit 5
+else
+    echo -e $COL_GREEN"Database created"$COL_RESET
+fi
+
+mysql -u root -p$mysqlroot -h $host -s -e "GRANT ALL PRIVILEGES ON \`$name\` . * TO '$user'@'$host';"
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"Failed to grant privileges"$COL_RESET
+    exit 6
+else
+    echo -e $COL_GREEN"Privileges granted"$COL_RESET
+fi
+

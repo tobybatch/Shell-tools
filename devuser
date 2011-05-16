@@ -1,0 +1,122 @@
+#!/bin/bash
+
+NO_ARGS=0
+USAGE="`basename $0` [-u username] [-k keyfile|-s keystore]"
+
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
+function usage() {
+    echo $USAGE
+    cat <<EOF
+
+This script creates a new user on this sytem.  It then carries out a number of commands:
+  1. Adds the new user to the crontab group
+  2. Makes a user space web folder (public_html) in the home space
+  3. Creates a database and DB user that matches this username
+  4. If provided, the specifies public key (-k) is copied into the
+      authorised_keys file of the new user to provide public key ssh
+      authorisation.
+  5.  NOT YET IMPLEMENTED, if we think we need it I can add this
+      If the key store is provided each file in that keystore directory that
+      ends .pub is presented.  Any or all of these keys can be added to the
+      authorised_keys file of the new user.
+EOF
+}
+
+if [ "$USER" != 'root' ]; then
+  echo 'This script needs to be run either as sudo or as root'
+fi
+
+if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
+then
+  UNAME=""
+  while [ -z "$UNAME" ]; do
+    echo -n "Enter the name of the new user: "
+    read UNAME
+  done
+fi
+
+while getopts "u:k:s:h" options; do
+  case $options in
+    u)  UNAME="$OPTARG";;
+    k)  KEYFILE="$OPTARG";;
+    # s)  KEYSTORE="$OPTARG";;
+    h)  usage; exit 0;;
+  esac
+done
+
+UNAME=${UNAME//[^a-zA-Z0-9]/}
+echo $UNAME
+
+if [ -z $UNAME ]; then
+  echo $USAGE
+  echo "$UNAME is mandatory"
+  exit 1
+fi
+
+echo -e $COL_CYAN"Creating user $UNAME"$COL_RESET
+/usr/sbin/adduser --disabled-password $UNAME
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to create user $UNAME"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Adding $UNAME to crontab group"$COL_RESET
+/usr/sbin/usermod -G crontab $UNAME
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to modify groups for user $UNAME"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Creating userspace web folder"$COL_RESET
+/bin/su - $UNAME -c "mkdir public_html"
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to create userspace web folder"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Creating ssh folder"$COL_RESET
+/bin/su - $UNAME -c "mkdir .ssh"
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to modify groups for user $UNAME"$COL_RESET
+  exit 1
+fi
+
+if [ -z $KEYFILE ]; then
+  echo "No public key file specified, skipping"
+elif [ -f $KEYFILE ]; then
+  key_name=`awk '{print $3}' ~/.ssh/id_rsa.pub`
+  echo -e $COL_CYAN"Adding $key_name to authorised_keys"$COL_RESET
+  cat $KEYFILE >> /home/$UNAME/.ssh/authorized_keys
+else
+  echo -e $COL_CYAN"Public key file does not exist, skipping"$COL_RESET
+fi
+
+echo -e $COL_CYAN"Resetting ownership"$COL_RESET
+/bin/chown -R $UNAME:$UNAME /home/$UNAME
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to reset ownership to $UNAME"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Resetting permissions"$COL_RESET
+/bin/su - $UNAME -c "mkdir -p .ssh && chmod 700 .ssh && chmod 600 .ssh/authorized_keys"
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to reset permissions for user $UNAME"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Creating user database"$COL_RESET
+/usr/local/bin/mysql-create-user-and-db -u $UNAME
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to create database $UNAME"$COL_RESET
+  exit 1
+fi
+

@@ -1,0 +1,41 @@
+#!/usr/bin/php
+<?php
+
+$option = getopt('hd:');
+
+// unshift the first element it's the command name
+$cmd = array_shift($argv);
+
+if (isset($option['h'])) {
+  usage($cmd);
+}
+
+$date = array_pop($argv);
+
+if (is_numeric($date)) {
+  $format = 'c';
+  if (isset($option['d'])) {
+    if ($option['d'] !== FALSE) {
+      $format = $option['d'];
+    }
+  }
+  echo date($format, $date) . "\n";
+} else {
+  echo strtotime($date) . "\n";
+}
+
+function usage($cmd) {
+  echo "$cmd [-h] [-d PHP_DATE_STRING] [date/time/secinds past the epoch]\n";
+  $html = "
+Converts dates between seconds past the epoch and text dates.  The last 
+argument on the command line will be tested with is_numeric and if it is
+numeric it will be printed as a human date.  If it fails the test it will
+be parsed as a date.
+-h\tPrints this help message
+-d\tUse the PHP date string to format the secocnds past the epoch,
+  \tdefaults to 'c'
+";
+  echo $html;
+}
+
+// vim: set filetype=php expandtab tabstop=2 shiftwidth=2 autoindent smartindent:

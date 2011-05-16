@@ -1,0 +1,3 @@
+#!/bin/bash
+
+drush php-eval "print_r(node_load($1))"

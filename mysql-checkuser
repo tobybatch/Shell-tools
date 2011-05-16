@@ -1,0 +1,104 @@
+#!/bin/bash
+
+NO_ARGS=0
+USAGE="`basename $0` -u username [-p password] [-h hostname] [-n dbname]"
+
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
+if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
+then
+    echo $USAGE
+    cat <<EOF
+
+Connects to the mysql host specified as root and checks for the existance of the
+named DB and user.  The DB connection will be made as root using the environment
+variable MYSQL_ROOT_PASSWORD.  If the environment variable is not set it will 
+prompt for a password on the command line.
+
+If the user or database exists it exists with a code of -1.
+
+The username is mandatory and the password and dbname will default to the 
+username for this check if not specified.  The hostname will default to local 
+host.  If the user and database do not exist this script will create a database
+and user matching the specified details and give that user full permissions 
+over the new database
+EOF
+    exit 1
+fi
+
+while getopts "u:p:h:n:" options; do
+    case $options in
+        u)  user="$OPTARG";;
+        p)  pass="$OPTARG";;
+        h)  host="$OPTARG";;
+        n)  name="$OPTARG";;
+    esac
+done
+
+if [ -z $user ]
+then
+    echo $USAGE
+    exit 1
+fi
+
+if [ -z $pass ]
+then
+    pass=$user
+fi
+
+if [ -z $host ]
+then
+    host=localhost
+fi
+
+if [ -z $name ]
+then
+    name=$user
+fi
+
+if [ -z $MYSQL_ROOT_PASSWORD ]
+then
+    echo -e $COL_CYAN"Enter the root password for your MySQL instance:"$COL_RESET
+    stty -echo
+    read mysqlroot
+    stty echo
+else
+    mysqlroot=$MYSQL_ROOT_PASSWORD
+fi
+
+# echo -e "\nuser=$user\npass=$pass\nhost=$host\nname=$name\nroot=$mysqlroot\n"
+
+# check connectivity
+dbcheck=`mysql -u root -p$mysqlroot -h $host -e "show databases;"`
+if [ $? != "0" ]
+then
+    echo -e $COL_RED"Cannot connect to database as root"$COL_RESET
+    exit 1
+fi
+
+# check database
+dbcheck=`mysql -u root -p$mysqlroot -h $host -s -e "show databases;"|grep $name`
+if [ -z $dbcheck ]
+then
+    echo -e $COL_GREEN"Database $name does not exist"$COL_RESET
+else
+    echo -e $COL_RED"Database $name exists"$COL_RESET
+    exit -1
+fi
+
+# check check user
+dbcheck=`mysql -u root -p$mysqlroot -h $host -D mysql -s -e 'select User from user where User="$user";'|grep $user`
+if [ -z $dbcheck ]
+then
+    echo -e $COL_GREEN"User $user does not exist"$COL_RESET
+else
+    echo -e $COL_RED"User $user exists"$COL_RESET
+    exit -1
+fi

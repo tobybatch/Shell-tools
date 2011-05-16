@@ -1,0 +1,5 @@
+#!/bin/bash
+
+killall inputattach
+nohup inputattach -bare /dev/ttyS0 > /dev/null 2>&1 &
+

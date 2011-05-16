@@ -1,0 +1,112 @@
+#!/bin/bash
+
+SUBJECT=$1
+TARGET=$HOME/.thumbs/$SUBJECT
+FNAME=`basename $SUBJECT`
+LOG=/tmp/mv.log
+
+echo `date`>>$LOG
+
+mkdir -p "$TARGET"
+pushd "$TARGET"
+
+if [ -f new.jpg ]
+then
+	echo "Thumbnail exists"
+else
+
+	length=`mplayer -identify "$SUBJECT" -nosound -vc dummy -vo null|grep ID_LENGTH|awk -F = '{print $2}'`
+
+	# interval=$(($length/6))
+	interval=$(echo "$length/17" | bc)
+	_01=$((interval*1))
+	_02=$((interval*2))
+	_03=$((interval*3))
+	_04=$((interval*4))
+	_05=$((interval*5))
+	_06=$((interval*6))
+	_07=$((interval*7))
+	_08=$((interval*8))
+	_09=$((interval*9))
+	_10=$((interval*10))
+	_11=$((interval*11))
+	_12=$((interval*12))
+	_13=$((interval*13))
+	_14=$((interval*14))
+	_15=$((interval*15))
+	_16=$((interval*16))
+
+	# echo Interval 1: $_01>>$LOG
+	# echo Interval 2: $_02>>$LOG
+	# echo Interval 3: $_03>>$LOG
+	# echo Interval 4: $_04>>$LOG
+	# echo Interval 5: $_05>>$LOG
+	# echo Interval 6: $_06>>$LOG
+
+	echo SUBJECT: $SUBJECT>>$LOG
+	echo TARGET:  $TARGET>>$LOG
+	echo FNAME:   $FNAME>>$LOG
+
+	mplayer "$SUBJECT" -ss $_01 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 01.jpg
+
+	mplayer "$SUBJECT" -ss $_02 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 02.jpg
+
+	mplayer "$SUBJECT" -ss $_03 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 03.jpg
+
+	mplayer "$SUBJECT" -ss $_04 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 04.jpg
+
+	mplayer "$SUBJECT" -ss $_05 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 05.jpg
+
+	mplayer "$SUBJECT" -ss $_06 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 06.jpg
+
+	mplayer "$SUBJECT" -ss $_07 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 07.jpg
+
+	mplayer "$SUBJECT" -ss $_08 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 08.jpg
+
+	mplayer "$SUBJECT" -ss $_09 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 09.jpg
+
+	mplayer "$SUBJECT" -ss $_10 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 10.jpg
+
+	mplayer "$SUBJECT" -ss $_11 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 11.jpg
+
+	mplayer "$SUBJECT" -ss $_12 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 12.jpg
+
+	mplayer "$SUBJECT" -ss $_13 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 13.jpg
+
+	mplayer "$SUBJECT" -ss $_14 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 14.jpg
+
+	mplayer "$SUBJECT" -ss $_15 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 15.jpg
+
+	mplayer "$SUBJECT" -ss $_16 -frames 1 -nolirc -nosound -vo jpeg
+	mv 00000001.jpg 16.jpg
+
+	# 96x72
+	for x in *.jpg
+	do
+		convert -scale 160x120 $x new.$x
+		mv new.$x $x
+	done
+
+	# montage -label %f -frame 5 -background #336699 -geometry +4+4 rose.jpg red-ball.png frame.jpg
+	montage -frame 5 -tile 4x4 -geometry +4+4 ??.jpg new.jpg
+	rm {01,02,03,04,05,06,07,08,09,10,11,12,13,14,15,16}.jpg
+fi
+
+gqview -t new.jpg
+
+popd
