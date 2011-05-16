@@ -1,6 +1,11 @@
 #!/bin/bash
 
-USAGE="$0 [-h] [-d /path/to/drush] [-s /path/to/sites/folder] /path/to/archive"
+USAGE="$0 [-h] [-d /path/to/drush] [-s /path/to/sites/folder] [-n sitename] /path/to/archive"
+
+function which_sql() {
+  DBDIR=$1
+  return $sql_name
+}
 
 function _usage() {
   echo $USAGE
@@ -21,16 +26,17 @@ EOF
 # TIMESTAMP=0
 # LONGTS=0
 
-while getopts "hd:o:" options; do
+while getopts "hd:s:n:" options; do
   case $options in
     h)  _usage; exit 0;;
     d)  DRUSH="$OPTARG";;
     s)  SITES="$OPTARG";;
+    n)  NAME="$OPTARG";;
   esac
 done
 
 shift $((OPTIND-1))
-$ARCHIVE=$1
+ARCHIVE=$1
 
 # check dependacies (drush)
 if [ -z "$DRUSH" ]; then
@@ -46,7 +52,64 @@ if [ -z "$SITES" ]; then
   SITES=`pwd`
 fi
 
+if [ ! -d "$SITES" ]; then
+  echo "Sites folder does not exists."
+  exit 1;
+fi
+
+NAME=`tar ztf $ARCHIVE|head -n 1`
+NAME=`basename $NAME`
+
+echo "Archive set to $ARCHIVE"
+echo "Name set to    $NAME"
+echo "Sites set to   $SITES"
+
 # unpack the archive
-# enumerate the dbdump/*.sql files
+tar -C $SITES -zxf $ARCHIVE
+echo "Select DB dump to restore:"
+
 # choose sql file to restore
-# restore sql
+DBDIR=$SITES/$NAME/dbdump
+until [ "$a" == 'y' ]; do
+  select sql_name in $DBDIR/*.sql; do
+    echo "Use $sql_name, Are you sure? (y/n)"
+    read a
+    break;
+  done
+done
+SQL=$sql_name
+echo "SQL set to $SQL"
+
+# fetch connection details
+db_url=`grep "^.db_url" $SITES/$NAME/settings.php`
+db_url=`echo $db_url | awk -F "'" '{print $2}'`
+
+# should be a regexp
+dbname=`echo $db_url | awk -F "/" '{print $4}'`
+db_url=`echo $db_url | awk -F "/" '{print $3}'`
+
+dbuser=`echo $db_url | awk -F ":" '{print $1}'`
+db_url=`echo $db_url | awk -F ":" '{print $2}'`
+
+dbpass=`echo $db_url | awk -F "@" '{print $1}'`
+dbhost=`echo $db_url | awk -F "@" '{print $2}'`
+
+mysql -u $dbuser -p$dbpass -h $dbhost $dbname -e "show tables;" > /dev/null
+ret=$?
+if [ "$?" == 0 ] ; then
+  echo "Are you sure you wish to overwrite the database $dbname on host $dbhost?"
+  echo "(y/N)"
+  read a
+  if [ "$a" == 'y' ]; then
+    # restore sql
+    $DRUSH -r `dirname $SITES` -l http://$NAME sqlq "source $SQL"  
+  fi
+else
+  echo "Unable to connect the the database specified in the setting file."
+  echo "Create the user with:"
+  echo "\tmysql-create-user-and-db -u $dbuser -p $dbpass -h $dbhost -n $dbname"
+  exit 1;
+fi
+
+$DRUSH -r `dirname $SITES` -l http://$NAME cc all
+$DRUSH -r `dirname $SITES` -l http://$NAME updatedb
