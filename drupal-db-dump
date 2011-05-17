@@ -70,5 +70,7 @@ if [ ! -z $TIMESTAMP ]; then
 else
   dumpfile="$SITE/dbdump/auto-dump-$fname.sql"
 fi
-$DRUSH -r `dirname $SITE` -l http://$basename sql-dump>$dumpfile
+DRUPAL_PATH=`dirname $SITE`
+DRUPAL_PATH=`dirname $DRUPAL_PATH`
+$DRUSH -r $DRUPAL_PATH -l http://$fname sql-dump>$dumpfile
 

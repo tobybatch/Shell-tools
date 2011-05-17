@@ -62,11 +62,11 @@ if [ ! -e "$SETTINGS" ]; then
   exit 1
 fi
 
-echo "Using drush in $DRUSH"
-echo "Site path set to $SITE"
-echo "Site name set to $SITENAME"
+echo "Using drush in     $DRUSH"
+echo "Site path set to   $SITE"
+echo "Site name set to   $SITENAME"
 echo "Output file set to $OUTPUT"
 
 `dirname $0`/drupal-db-dump -t -l -s $SITE
 
-tar -C `dirname $SITE` -zcvf $OUTPUT `basename $SITE`
+tar -C `dirname $SITE` -zcf $OUTPUT `basename $SITE`

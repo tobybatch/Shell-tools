@@ -1,4 +1,39 @@
 #!/bin/bash
 
-pass=`</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24`
+NO_ARGS=0
+USAGE="`basename $0` [-s]"
+
+function usage() {
+  echo $USAGE
+  cat <<EOF
+
+Generates a randon 24 character password.  The -s flag restricts the password
+to alphanumeric characters only.
+
+EOF
+  exit
+}
+
+
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
+while getopts "hs" options; do
+  case $options in
+    h)  usage;;
+    s)  safe=1;;
+  esac
+done
+
+if [ -z $safe ]; then
+  pass=`</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24`
+else
+  pass=`</dev/urandom tr -dc 'A-Za-z0-9' | head -c24`
+fi
 echo $pass
