@@ -57,7 +57,7 @@ if [ ! -e "$SITE/dbdump" ]; then
   mkdir -p $SITE/dbdump
 fi
 if [ ! -e "$SITE/dbdump/.htaccess" ]; then
-  echo "Order Deny, Allow\nDeny from all">$x/dbdump/.htaccess
+  echo "Order Deny, Allow\nDeny from all">$SITE/dbdump/.htaccess
 fi
 # dump db using drush
 fname=`basename $SITE`
