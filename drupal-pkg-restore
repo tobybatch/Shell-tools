@@ -31,7 +31,7 @@ while getopts "hd:s:n:" options; do
     h)  _usage; exit 0;;
     d)  DRUSH="$OPTARG";;
     s)  SITES="$OPTARG";;
-    n)  NAME="$OPTARG";;
+    n)  NEW_NAME="$OPTARG";;
   esac
 done
 
@@ -60,9 +60,14 @@ fi
 NAME=`tar ztf $ARCHIVE|head -n 1`
 NAME=`basename $NAME`
 
-echo "Archive set to $ARCHIVE"
-echo "Name set to    $NAME"
-echo "Sites set to   $SITES"
+if [ -z "$NEW_NAME" ]; then
+  NEW_NAME=$NAME
+fi
+
+echo "Archive set to  $ARCHIVE"
+echo "Name set to     $NAME"
+echo "New name set to $NAME"
+echo "Sites set to    $SITES"
 
 # unpack the archive
 tar -C $SITES -zxf $ARCHIVE
@@ -96,20 +101,25 @@ dbhost=`echo $db_url | awk -F "@" '{print $2}'`
 
 mysql -u $dbuser -p$dbpass -h $dbhost $dbname -e "show tables;" > /dev/null
 ret=$?
-if [ "$?" == 0 ] ; then
+if [ "$ret" == 0 ] ; then
   echo "Are you sure you wish to overwrite the database $dbname on host $dbhost?"
   echo "(y/N)"
   read a
   if [ "$a" == 'y' ]; then
     # restore sql
     $DRUSH -r `dirname $SITES` -l http://$NAME sqlq "source $SQL"  
+    $DRUSH -r `dirname $SITES` -l http://$NAME sqlq "update users set picture = replace (picture, 'sites/$NAME/files', 'sites/$NEW_NAME/files')"
+    $DRUSH -r `dirname $SITES` -l http://$NAME sqlq "update files set filepath = replace (filepath, 'sites/$NAME/files', 'sites/$NEW_NAME/files')"
+    $DRUSH -r `dirname $SITES` -l http://$NAME sqlq "update system set filename = replace (filename, 'sites/$NAME', 'sites/$NEW_NAME')"
   fi
 else
   echo "Unable to connect the the database specified in the setting file."
   echo "Create the user with:"
-  echo "\tmysql-create-user-and-db -u $dbuser -p $dbpass -h $dbhost -n $dbname"
+  echo -e "\tmysql-create-user-and-db -u $dbuser -p $dbpass -h $dbhost -n $dbname"
   exit 1;
 fi
 
-$DRUSH -r `dirname $SITES` -l http://$NAME cc all
-$DRUSH -r `dirname $SITES` -l http://$NAME updatedb
+mv $SITES/$NAME $SITES/$NEW_NAME
+
+$DRUSH -r `dirname $SITES` -l http://$NEW_NAME cc all
+$DRUSH -r `dirname $SITES` -l http://$NEW_NAME updatedb
