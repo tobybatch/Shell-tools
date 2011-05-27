@@ -23,7 +23,7 @@ This script creates a new user on this sytem.  It then carries out a number of c
   4. If provided, the specifies public key (-k) is copied into the
       authorised_keys file of the new user to provide public key ssh
       authorisation.
-  5.  NOT YET IMPLEMENTED, if we think we need it I can add this
+  5. NOT YET IMPLEMENTED, if we think we need it I can add this
       If the key store is provided each file in that keystore directory that
       ends .pub is presented.  Any or all of these keys can be added to the
       authorised_keys file of the new user.
@@ -75,22 +75,39 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
+echo -e $COL_CYAN"Adding $UNAME to www-data group"$COL_RESET
+/usr/sbin/usermod -G www-data $UNAME
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to modify groups for user $UNAME"$COL_RESET
+  exit 1
+fi
+
 echo -e $COL_CYAN"Creating userspace web folder"$COL_RESET
-/bin/su - $UNAME -c "mkdir public_html"
+/bin/su - $UNAME -c "mkdir /home/$UNAME/public_html"
 if [ $? != 0 ]; then
   echo -e $COL_RED"Failed to create userspace web folder"$COL_RESET
   exit 1
 fi
 
 echo -e $COL_CYAN"Creating ssh folder"$COL_RESET
-/bin/su - $UNAME -c "mkdir .ssh"
+/bin/su - $UNAME -c "mkdir /home/$UNAME/.ssh"
 if [ $? != 0 ]; then
-  echo -e $COL_RED"Failed to modify groups for user $UNAME"$COL_RESET
+  echo -e $COL_RED"Failed to create .ssh folder"$COL_RESET
+  exit 1
+fi
+
+echo -e $COL_CYAN"Touching authorized_keys"$COL_RESET
+/bin/su - $UNAME -c "touch /home/$UNAME/.ssh/authorized_keys"
+if [ $? != 0 ]; then
+  echo -e $COL_RED"Failed to create .ssh/authorized_keys file $UNAME"$COL_RESET
   exit 1
 fi
 
 if [ -z $KEYFILE ]; then
-  echo "No public key file specified, skipping"
+  echo -e $COL_YELLOW"No public key file specified, skipping."$COL_RESET
+  echo "If you need to log in as this user then use this command to copy your public key"
+  echo "into the authorized keys file:"
+  echo -e $COL_GREEN"$ ssh USER@HOST 'cat .ssh/KEYNAME.pub'>> /home/$UNAME/.ssh/authorized_keys"$COL_RESET
 elif [ -f $KEYFILE ]; then
   key_name=`awk '{print $3}' ~/.ssh/id_rsa.pub`
   echo -e $COL_CYAN"Adding $key_name to authorised_keys"$COL_RESET
@@ -107,16 +124,10 @@ if [ $? != 0 ]; then
 fi
 
 echo -e $COL_CYAN"Resetting permissions"$COL_RESET
-/bin/su - $UNAME -c "mkdir -p .ssh && chmod 700 .ssh && chmod 600 .ssh/authorized_keys"
+/bin/su - $UNAME -c "mkdir -p /home/$UNAME/.ssh && chmod 700 /home/$UNAME/.ssh && chmod 600 /home/$UNAME/.ssh/authorized_keys"
 if [ $? != 0 ]; then
   echo -e $COL_RED"Failed to reset permissions for user $UNAME"$COL_RESET
   exit 1
 fi
 
-echo -e $COL_CYAN"Creating user database"$COL_RESET
-/usr/local/bin/mysql-create-user-and-db -u $UNAME
-if [ $? != 0 ]; then
-  echo -e $COL_RED"Failed to create database $UNAME"$COL_RESET
-  exit 1
-fi
-
+echo -e $COL_GREEN"If this user needs a database then use\n$ mysql-create-user"$COL_RESET
