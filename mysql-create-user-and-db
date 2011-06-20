@@ -51,8 +51,8 @@ fi
 
 if [ -z $pass ]
 then
-    pass=`randpass -s`
     until [ "$a" == 'y' ]; do
+      pass=`randpass -s`
       echo -e $COL_YELLOW"Password currently set to $pass"$COL_RESET
       echo -e $COL_GREEN"Accept or generate a new password, Yes, No, Custom (y/n/c)"$COL_RESET
       read a
@@ -72,7 +72,7 @@ then
           echo -e $COL_RED"Passwords did not match"$COL_RESET
           pass=`randpass -s`
         fi
-      else
+      elif [ "$a" == 'n' ]; then
         pass=`randpass -s`
       fi
     done
