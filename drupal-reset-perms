@@ -1,26 +1,26 @@
 #!/bin/bash
 
-USAGE="$0 <drupalroot>"
+USAGE="sudo $0 <drupalroot>"
 
 # TODO - getopts and help output
 # TODO - make it work on non debian systems
-if [ -z $1 ]; then
-  DR=/var/www
-else
+
+#if [ -z $1 ]; then
+#  DR=/var/www
+#else
   DR=$1
-fi
+#fi
 
 _USER=$SUDO_USER
+
+if [ -z "$DR" ]; then
+    echo "Usage: $0 path_to_drupal_site_root"
+    exit 2
+fi
 
 if [ -z "$_USER" ]; then
     echo "You must run this script using sudo"
     exit 1
-fi
-
-echo $DR
-if [ -z "$DR" ]; then
-    echo "Usage: $0 path_to_drupal_site_root"
-    exit 2
 fi
 
 if [ ! -d "$DR" ]; then
@@ -36,6 +36,8 @@ fi
 
 chown -R $SUDO_UID:users $DR
 chown -R www-data:www-data $FILEDIR
-find $FILEDIR -name .svn -exec chown $SUDO_UID:www-data {} \;
+find $FILEDIR -name .svn -exec chown -R $SUDO_UID:www-data {} \;
+find $FILEDIR -name .git -exec chown -R $SUDO_UID:www-data {} \;
+find $FILEDIR -name CVS  -exec chown -R $SUDO_UID:www-data {} \;
 find $FILEDIR -type d -exec chmod 1775 {} \;
 find $FILEDIR -type f -exec chmod 664 {} \;
