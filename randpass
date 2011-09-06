@@ -1,14 +1,15 @@
 #!/bin/bash
 
 NO_ARGS=0
-USAGE="`basename $0` [-s]"
+USAGE="`basename $0` [-s] [-x]"
 
 function usage() {
   echo $USAGE
   cat <<EOF
 
 Generates a randon 24 character password.  The -s flag restricts the password
-to alphanumeric characters only.
+to alphanumeric characters only.  The -x will use the XKCD random four word
+password generation (http://xkcd.com/936/)
 
 EOF
   exit
@@ -24,16 +25,21 @@ COL_BLUE=$ESC_SEQ"34;01m"
 COL_MAGENTA=$ESC_SEQ"35;01m"
 COL_CYAN=$ESC_SEQ"36;01m"
 
-while getopts "hs" options; do
+while getopts "hsx" options; do
   case $options in
     h)  usage;;
+    x)  xkcd=1;;
     s)  safe=1;;
   esac
 done
 
-if [ -z $safe ]; then
-  pass=`</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24`
+if [ -z $xkcd ]; then
+  if [ -z $safe ]; then
+    pass=`</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24`
+  else
+    pass=`</dev/urandom tr -dc 'A-Za-z0-9' | head -c24`
+  fi
 else
-  pass=`</dev/urandom tr -dc 'A-Za-z0-9' | head -c24`
+  pass=$(cat /usr/share/dict/words |grep -v "'"|shuf -n4 | tr '[A-Z]' '[a-z]')
 fi
 echo $pass
