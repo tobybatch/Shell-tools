@@ -75,6 +75,8 @@ fi
 
 # run post commands
 if [ ! -z "$R_POSTCOMMAND" ]; then
-    print_msg "R_POSTCOMMAND=$R_POSTCOMMAND" $VERBOSE
-	ssh $SSH_CON "$R_POSTCOMMAND"
+  print_msg "R_POSTCOMMAND=$R_POSTCOMMAND" $VERBOSE
+  if [ -z "$SKIP_FLUSH_PRIVS" ]; then
+    ssh $SSH_CON "$R_POSTCOMMAND"
+  fi
 fi
