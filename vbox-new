@@ -1,0 +1,77 @@
+#!/bin/bash
+
+NO_ARGS=0
+USAGE="`basename $0` machinename [-m memory] [-d disksize] [-i iso]"
+
+function fullusage() {
+    cat <<EOF
+
+Create a new virtual box machine.
+
+    -m memory in mega bytes
+    -d disk size in megabytes
+    -i the iso to attach at first boot
+    -p The rpd port to attach to on localhost
+
+EOF
+}
+
+if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
+then
+    echo $USAGE
+    fullusage
+    exit 1
+fi
+
+MEMORY=256
+DISK=8000
+
+while getopts "m:d:i:p:h" options; do
+    case $options in
+        m) MEMORY=$OPTARG;;
+        d) DISK=$OPTARG;;
+        i) ISO=$OPTARG;;
+        p) PORT=$OPTARG;;
+        h) echo $USAGE; fullusage; exit 0;;
+    esac
+done
+
+shift $((OPTIND-1))
+if [ ! -z $1 ]
+    MACHINENAME=$1
+else
+    echo "Machine name not provided"
+    echo $USAGE
+    fullusage
+    exit 1
+fi
+
+# todo - check numbers are really numbers
+
+VBoxManage createvm -name "$MACHINENAME" -register
+VBoxManage modifyvm "$MACHINENAME" --memory "$MEMORY" --acpi on --boot1 dvd --nic1 nat
+VBoxManage createvdi --filename "$MACHINENAME"  --size $DISK
+VBoxManage storagectl "$MACHINENAME" --name "$MACHINENAME.vdi" --add ide
+VBoxManage storageattach "$MACHINENAME" --storagectl "$MACHINENAME.vdi" --port 1 --device 1 --type hdd --medium "$MACHINENAME.vdi"
+VBoxManage storagectl "$MACHINENAME" --name "dvd" --add sata
+
+if [ ! -z "$ISO" ]; then
+    VBoxManage storageattach "$MACHINENAME" --storagectl dvd --medium $ISO --type dvddrive --port 1
+fi
+
+if [ ! -z "$PORT" ]; then
+    vboxmanage modifyvm $MACHINENAME --vrdeauthtype null
+    vboxmanage modifyvm $MACHINENAME --vrdeport=$PORT
+    vboxmanage modifyvm $MACHINENAME --vrdeaddress=127.0.0.1
+    $VRDE="--vrde on "
+fi
+
+echo "To start the vm type the following"
+echo "    vboxheadless -s $MACHINENAME $VRDE&"
+
+if [ ! -z "$PORT" ]; then
+    echo "To connect from a remote machine over ssh use:"
+    echo "    nohup ssh -f user@remote.machine.name -L 2000:localhost:$PORT -N"
+    echo "    rdesktop localhost:2000"
+fi
+
