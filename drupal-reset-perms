@@ -1,43 +1,187 @@
 #!/bin/bash
 
-USAGE="sudo $0 <drupalroot>"
+CWD=`dirname $0`/..
 
-# TODO - getopts and help output
-# TODO - make it work on non debian systems
+USAGE="$0 [-h] [-y user group webuser webgroup] [-p path]"
 
-#if [ -z $1 ]; then
-#  DR=/var/www
-#else
-  DR=$1
-#fi
+function help
+{
+    echo $USAGE
+    cat <<EOF
 
-_USER=$SUDO_USER
+This script will reset ownership and permissions on the web stack.  It will
+try and guess the correct users and groups but may be run in a uninteractive
+mode.  If run in non-interactive mode the you must pass the correct users and
+groups to the script on the command line.  If you can figure out how to use the
+script with these instructions you are probably too stupid to have sudo/root
+access which, incedentaly, you will need to run this script.
 
-if [ -z "$DR" ]; then
-    echo "Usage: $0 path_to_drupal_site_root"
-    exit 2
+  -h Show this message
+  -y Run non interactive, you will need to pass the users and groups
+  -p The root path to reset
+
+EOF
+}
+
+_user=$SUDO_USER
+# look for a users or developers group to use
+_group=`grep 'developers\|users' /etc/group`
+_group=`echo "$_group"|awk -F : '{print $1}'|head -n 1`
+if [ -z "$_group" ]; then
+    _group=$SUDO_GID
 fi
+_root="$(id -u)"
 
-if [ -z "$_USER" ]; then
-    echo "You must run this script using sudo"
+while getopts "yhp:" options; do
+  case $options in
+    y)  NONINTER=1;;
+    h)  help; exit 0;;
+    p)  CWD="$OPTARG";;
+  esac
+done
+
+if [ -z "$_USER" ] && [ "$(id -u)" != "0" ]; then
+    echo "You must run this script as root or using sudo"
     exit 1
 fi
 
-if [ ! -d "$DR" ]; then
-    echo "Drupal dir doesnot exist"
-    echo $USEAGE
-    exit 3
+if [ "$NONINTER" == 1 ]; then
+    shift $((OPTIND-1))
+    user=$1
+    shift $((OPTIND-1))
+    group=$1
+    shift $((OPTIND-1))
+    webuser=$1
+    shift $((OPTIND-1))
+    webgroup=$1
+else
+    user=$_user;
+    group=$_group;
+    webuser=`grep 'www-data\|apache\|httpd\|http' /etc/passwd`
+    webuser=`echo "$webuser"|awk -F : '{print $1}'`
+    webgroup=`grep 'www-data\|apache\|httpd\|http' /etc/group`
+    webgroup=`echo "$webgroup"|awk -F : '{print $1}'`
+
+    until [ "$a" == 'y' ]; do
+        echo
+        echo -n "Enter the user name for the cli user [$user] "
+        read input
+        if [ ! -z "$input" ]; then
+            user=${input//[^a-zA-Z0-9]/}
+        fi
+    
+        echo -n "Enter the group name for the cli group [$group] "
+        read input
+        if [ ! -z "$input" ]; then
+            group=${input//[^a-zA-Z0-9]/}
+        fi
+    
+        echo -n "Enter the user name for the webuser [$webuser] "
+        read input
+        if [ ! -z "$input" ]; then
+            webuser=${input//[^-a-zA-Z0-9]/}
+        fi
+    
+        echo -n "Enter the user name for the webgroup [$webgroup] "
+        read input
+        if [ ! -z "$input" ]; then
+            webgroup=${input//[^-a-zA-Z0-9]/}
+        fi
+
+        a=n
+        echo
+        echo "User name = $user"
+        echo "Group name = $group "
+        echo "Webuser group name = $webuser"
+        echo "Webgroup group name = $webgroup"
+        echo
+        echo -n "Proceed (Y/n)"
+        read a
+        if [ -z "$a" ]; then
+            a=y
+        fi
+    done
 fi
 
-FILEDIR="$DR/files"
-if [ ! -d "FILEDIR" ]; then
-  FILEDIR="$DR/sites/*/files"
+if [ -z "$user" ]; then
+    echo "User not set, aborting"
+    echo $USAGE
+    exit 2;
 fi
 
-chown -R $SUDO_UID:users $DR
-chown -R www-data:www-data $FILEDIR
-find $FILEDIR -name .svn -exec chown -R $SUDO_UID:www-data {} \;
-find $FILEDIR -name .git -exec chown -R $SUDO_UID:www-data {} \;
-find $FILEDIR -name CVS  -exec chown -R $SUDO_UID:www-data {} \;
-find $FILEDIR -type d -exec chmod 1775 {} \;
-find $FILEDIR -type f -exec chmod 664 {} \;
+if [ -z "$group" ]; then
+    echo "Group not set, aborting"
+    echo $USAGE
+    exit 3;
+fi
+
+if [ -z "$webuser" ]; then
+    echo "Web not set, aborting"
+    echo $USAGE
+    exit 4;
+fi
+
+if [ -z "$webgroup" ]; then
+    echo "Web not set, aborting"
+    echo $USAGE
+    exit 5;
+fi
+
+setfacl=`which setfacl`
+if [ -z "$setfacl" ]; then
+    cat << EOF
+
+I am unable to find the setfacl command.  To get permissions
+to work both for the $webuser and $user I would like to use
+setfacl.  Without this I will set the permissions on the files
+
+  $CWD/sites/*/files
+
+to be owned by the $webuser with the sticky bit set but you need
+to add the $user to the $webgroup and alter the apache umask
+to 0002.
+
+I recommend you install setfacl and remount the folder
+
+  $CWD
+
+with the acl flag:
+
+  mount -o remount,acl /
+
+Use ctrl-c to exit this script and install setfacl or hit any
+key to continue.
+
+EOF
+    read
+fi
+
+# echo user  = $user
+# echo group = $group
+# echo webuser = $webuser
+# echo webgroup = $webgroup
+# echo working dir = $CWD
+# echo
+
+set -x
+
+find $CWD -type d -exec chmod 775 {} \;
+find $CWD -type f -exec chmod 664 {} \;
+
+chown -R $user:$group $CWD
+chown -R $webuser:$webgroup $CWD/sites/*/files
+chmod a+x $CWD/scripts/*
+
+set +x
+
+if [ -z "$setfacl" ]; then
+    set -x
+    sudo chmod -R 1775 $CWD/sites/*/files
+    set +x
+else
+    set -x
+    sudo setfacl -R -m u:$webuser:rwx -m u:$user:rwx -m g:$group:rwx $CWD/sites/*/files
+    sudo setfacl -dR -m u:$webuser:rwx -m u:$user:rwx -m g:$group:rwx $CWD/sites/*/files
+    sudo setfacl -R -m d:u:$webuser:rwx -m u:$user:rwx -m g:$group:rwx $CWD/sites/*/files
+    set +x
+fi
