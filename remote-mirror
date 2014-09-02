@@ -64,15 +64,17 @@ if [ ! -z "$R_TARGET" ]; then
         $SSH_CON:$R_TARGET `dirname $R_TARGET`
 fi
 
-# run post commands
-if [ ! -z "$R_POSTCOMMAND" ]; then
-    print_msg "R_POSTCOMMAND=$R_POSTCOMMAND" $VERBOSE
-	ssh $SSH_CON "$R_POSTCOMMAND"
-fi
-
 if [ ! -z "$L_MYSQL" ]; then
     # restore db
     print_msg "Restoring DB [$L_MYSQL < $R_DUMP_SQL]" $VERBOSE
     $L_MYSQL < $R_DUMP_SQL
-    $L_MYSQL -e "FLUSH PRIVILEGES;"
+    if [ -z "$SKIP_FLUSH_PRIVS" ]; then
+      $L_MYSQL -e "FLUSH PRIVILEGES;"
+    fi
+fi
+
+# run post commands
+if [ ! -z "$R_POSTCOMMAND" ]; then
+  print_msg "R_POSTCOMMAND=$R_POSTCOMMAND" $VERBOSE
+  /bin/bash $R_POSTCOMMAND
 fi

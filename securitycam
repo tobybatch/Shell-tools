@@ -1,0 +1,24 @@
+#!/bin/bash
+
+ORIGIMG="000DC5D252CC()_0_20130501091550_57.jpg"
+ROOT='/home/camera/cam01'
+
+cd $ROOT
+
+for $x in *.jpg; do
+
+    IMG="$( cut -d '_' -f 3,4 <<< "$ORIGIMG" )"
+    YEAR="$( cut -c 1,2,3,4 <<< "$IMG" )"
+    MONTH="$( cut -c 5,6 <<< "$IMG" )"
+    DAY="$( cut -c 7,8 <<< "$IMG" )"
+    HOUR="$( cut -c 9,10 <<< "$IMG" )"
+    MINUTE="$( cut -c 11,12 <<< "$IMG" )"
+    SECOND="$( cut -c 13,14 <<< "$IMG" )"
+    NAME="$( cut -c 16,17,18,19,20,21 <<< "$IMG" )"
+    DIR="$YEAR/$MONTH/$DAY/$HOUR/$MINUTE"
+    FILE="$YEAR-$MONTH-$DAY-$HOUR:$MINUTE:$SECOND-$NAME"
+
+    echo mkdir $DIR
+    echo mv "$ORIGIMG" $FILE
+
+done

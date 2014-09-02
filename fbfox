@@ -1,4 +1,0 @@
-#!/bin/bash
-
-xhost + localhost
-su - firefox -c "nohup firefox --display=localhost:0.0 &"
