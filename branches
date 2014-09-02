@@ -9,6 +9,8 @@ COL_BLUE=$ESC_SEQ"34;01m"
 COL_MAGENTA=$ESC_SEQ"35;01m"
 COL_CYAN=$ESC_SEQ"36;01m"
 
+EXPLAIN_NEEDED=0
+
 while getopts "b:l" options; do
     case $options in
         b) newbranch="$OPTARG";;
@@ -33,6 +35,7 @@ for var in "$@"; do
                 diff=`git --git-dir=$x diff refs/heads/${branch}..refs/tags/${lt}`
                 if [ ! -z "$diff" ]; then
                     printf "%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    EXPLAIN_NEEDED=1
                 else
                     printf "%-25s %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
@@ -52,3 +55,8 @@ for var in "$@"; do
     fi
 done
 
+if [ "$EXPLAIN_NEEDED" == "1" ]; then
+    echo
+    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
+    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
+fi
