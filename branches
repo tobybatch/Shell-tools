@@ -1,22 +1,73 @@
 #!/bin/bash
 
-while getopts "b:" options; do
+NO_ARGS=0
+USAGE="`basename $0` [-l] [-p] [-b branch] path/to/drupal"
+
+while getopts "b:lp" options; do
     case $options in
         b) newbranch="$OPTARG";;
+        l) latesttag=1;;
+        p) plainoutput=1;;
     esac
 done
 
-echo branch $newbranch
-echo $@
+if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
+then
+    echo $USAGE
+    cat <<EOF
+Search the file system down from the specified path looking for git repos.
+
+For each repo found print the name, current branch, (optionally the latest tag)
+and the path to the repo.
+
+Optional a new named branch can be created and checkout out/pulled.
+
+-p  Plain out put, supress colours. Use to create a changelog entry.
+-l  Show latest tag. If colours are enabled then tag that have different
+    content to the current branch are coloured red.
+-b branch
+    If specified then a new branch is created and checkout out.
+EOF
+    exit 1
+fi
+
+if [ -z "$plainoutput" ]; then
+    ESC_SEQ="\x1b["
+    COL_RESET=$ESC_SEQ"39;49;00m"
+    COL_RED=$ESC_SEQ"31;01m"
+    COL_GREEN=$ESC_SEQ"32;01m"
+    COL_YELLOW=$ESC_SEQ"33;01m"
+    COL_BLUE=$ESC_SEQ"34;01m"
+    COL_MAGENTA=$ESC_SEQ"35;01m"
+    COL_CYAN=$ESC_SEQ"36;01m"
+fi
+
+EXPLAIN_NEEDED=0
+
+if [ ! -z "$latesttag" ]; then
+    printf "${COL_GREEN}%-25s %-20s %-10s %s${COL_RESET}\n" Name Branch Tag Path
+else
+    printf "${COL_GREEN}%-25s %-20s %s${COL_RESET}\n" Name Branch Path
+fi
 
 for var in "$@"; do
     if [ -d $var ]; then
-        echo
         for x in `find $var/* -name .git`; do
             dir=`dirname $x`
             name=`basename $dir`
-            branch=`git --git-dir=$x branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'`
-            printf "%-20s %-20s %s\n" $name $branch $dir
+            branch=`git --git-dir=$x branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
+            if [ ! -z "$latesttag" ]; then
+                lt=`git --git-dir=$x describe --abbrev=0 --tags`
+                diff=`git --git-dir=$x diff refs/heads/${branch}..refs/tags/${lt}`
+                if [ ! -z "$diff" ]; then
+                    printf "%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    EXPLAIN_NEEDED=1
+                else
+                    printf "%-25s %-20s %-10s %s\n" $name $branch $lt $dir
+                fi
+            else
+                printf "%-25s %-20s %s\n" $name $branch $dir
+            fi
             if [ ! -z "$newbranch" ]; then
                 git --git-dir=$x stash
                 git --git-dir=$x fetch origin
@@ -30,3 +81,8 @@ for var in "$@"; do
     fi
 done
 
+if [ "$EXPLAIN_NEEDED" == "1" ]; then
+    echo
+    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
+    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
+fi
