@@ -1,13 +1,14 @@
 #!/bin/bash
 
 NO_ARGS=0
-USAGE="`basename $0` [-l] [-p] [-b branch] path/to/drupal"
+USAGE="`basename $0` [-f] [-l] [-p] [-b branch] path/to/drupal"
 
-while getopts "b:lp" options; do
+while getopts "b:lpf" options; do
     case $options in
         b) newbranch="$OPTARG";;
         l) latesttag=1;;
         p) plainoutput=1;;
+        f) fetchorigin=1;;
     esac
 done
 
@@ -22,11 +23,13 @@ and the path to the repo.
 
 Optional a new named branch can be created and checkout out/pulled.
 
+-f  Fetch origin
 -p  Plain out put, supress colours. Use to create a changelog entry.
 -l  Show latest tag. If colours are enabled then tag that have different
     content to the current branch are coloured red.
 -b branch
-    If specified then a new branch is created and checkout out.
+    If specified and the remote branch exists then a the branch is checked out
+    and pulled. Existing changes will be stashed, and then applied.
 EOF
     exit 1
 fi
@@ -53,6 +56,10 @@ fi
 for var in "$@"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
+            # Fetch latest
+            if [ ! -z "$fetchorigin" ]; then
+                git --git-dir=$x fetch origin > /dev/null
+            fi
             dir=`dirname $x`
             name=`basename $dir`
             branch=`git --git-dir=$x branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
@@ -81,8 +88,8 @@ for var in "$@"; do
     fi
 done
 
-if [ "$EXPLAIN_NEEDED" == "1" ]; then
-    echo
-    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
-    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
-fi
+#if [ "$EXPLAIN_NEEDED" == "1" ]; then
+#    echo
+#    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
+#    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
+#fi
