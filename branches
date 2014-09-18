@@ -67,17 +67,17 @@ for var in "$@"; do
                 lt=`git --git-dir=$x describe --abbrev=0 --tags`
                 diff=`git --git-dir=$x diff refs/heads/${branch}..refs/tags/${lt}`
                 if [ ! -z "$diff" ]; then
-                    printf "%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    printf "\n%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
                     EXPLAIN_NEEDED=1
                 else
-                    printf "%-25s %-20s %-10s %s\n" $name $branch $lt $dir
+                    printf "\n%-25s %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
             else
-                printf "%-25s %-20s %s\n" $name $branch $dir
+                printf "\n%-25s %-20s %s\n" $name $branch $dir
             fi
             if [ ! -z "$newbranch" ]; then
                 git --git-dir=$x stash
-                git --git-dir=$x fetch origin
+                git --git-dir=$x fetch origin --tags
                 git --git-dir=$x show-branch $newbranch > /dev/null
                 if [ "$?" == 0 ]; then
                     git --git-dir=$x checkout $newbranch
