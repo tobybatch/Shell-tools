@@ -45,8 +45,6 @@ if [ -z "$plainoutput" ]; then
     COL_CYAN=$ESC_SEQ"36;01m"
 fi
 
-EXPLAIN_NEEDED=0
-
 if [ ! -z "$latesttag" ]; then
     printf "${COL_GREEN}%-25s %-20s %-10s %s${COL_RESET}\n" Name Branch Tag Path
 else
@@ -56,19 +54,19 @@ fi
 for var in "$@"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
+            GITCMD="git -C `dirname $x`"
             # Fetch latest
             if [ ! -z "$fetchorigin" ]; then
-                git --git-dir=$x fetch origin > /dev/null
+                $GITCMD fetch origin > /dev/null
             fi
             dir=`dirname $x`
             name=`basename $dir`
-            branch=`git --git-dir=$x branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
+            branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
             if [ ! -z "$latesttag" ]; then
-                lt=`git --git-dir=$x describe --abbrev=0 --tags`
-                diff=`git --git-dir=$x diff refs/heads/${branch}..refs/tags/${lt}`
+                lt=`$GITCMD describe --abbrev=0 --tags`
+                diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt}`
                 if [ ! -z "$diff" ]; then
                     printf "\n%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
-                    EXPLAIN_NEEDED=1
                 else
                     printf "\n%-25s %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
@@ -76,20 +74,15 @@ for var in "$@"; do
                 printf "\n%-25s %-20s %s\n" $name $branch $dir
             fi
             if [ ! -z "$newbranch" ]; then
-                git --git-dir=$x stash
-                git --git-dir=$x fetch origin --tags
-                git --git-dir=$x show-branch $newbranch > /dev/null
+                # The --git-dir doesn't work in this case
+                $GITCMD stash
+                $GITCMD fetch origin --tags
+                $GITCMD show-branch $newbranch > /dev/null
                 if [ "$?" == 0 ]; then
-                    git --git-dir=$x checkout $newbranch
-                    git --git-dir=$x pull origin $newbranch
+                    $GITCMD checkout $newbranch
+                    $GITCMD pull origin $newbranch
                 fi
             fi
         done
     fi
 done
-
-#if [ "$EXPLAIN_NEEDED" == "1" ]; then
-#    echo
-#    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
-#    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
-#fi
