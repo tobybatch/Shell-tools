@@ -2,6 +2,7 @@
 
 NO_ARGS=0
 USAGE="`basename $0` [-f] [-l] [-p] [-b branch] path/to/drupal"
+EXITSTATE=0
 
 while getopts "b:lpf" options; do
     case $options in
@@ -67,6 +68,7 @@ for var in "$@"; do
                 diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt}`
                 if [ ! -z "$diff" ]; then
                     printf "\n%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    $EXITSTATE=$(($EXITSTATE + 1))
                 else
                     printf "\n%-25s %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
@@ -86,3 +88,5 @@ for var in "$@"; do
         done
     fi
 done
+
+exit $EXITSTATE
