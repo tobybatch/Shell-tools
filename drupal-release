@@ -1,0 +1,92 @@
+#!/bin/bash
+
+source `dirname $0`/colours
+USAGE="$0 [options] remoteuser remotehost"
+
+# Set defaults
+DRUPAL_REMOTE_ROOT=/var/www/latest
+DRUPAL_LOCAL_ROOT=/var/www/html/wl
+
+#################################
+# Functions
+
+function getRemotePath {
+    export RPATH=`ssh $RUSER@$RHOST realpath /var/www/latest`
+    export CURRENT=`basename $RPATH`
+}
+
+function getVersionElements {
+    export MAJOR_VERSION=`echo $1|awk '{split($0,a,"."); print a[1]}'`
+    export MINOR_VERSION=`echo $1|awk '{split($0,a,"."); print a[2]}'`
+    export PATCH_VERSION=`echo $1|awk '{split($0,a,"."); print a[3]}'`
+}
+
+function debug {
+    if [ ! -z "$VERBOSE" ]; then
+        echo -e $msg
+    fi
+}
+
+# End functions
+###############################
+
+
+# Extended get ipts to support long opts
+OPTS=`getopt -o v -r drupal_remote_root -l drupal_local_root -b bump -f force-version: -- "$@"`
+if [ $? != 0 ]; then
+    exit 1
+fi
+
+eval set -- "$OPTS"
+
+while true; do
+    case $1 in
+        -v) VERBOSE='verbose'; shift;;
+        --drupal_remote_root) DRUPAL_REMOTE_ROOT=="$2"; shift 2;;
+        --drupal_local_root) DRUPAL_LOCAL_ROOT=="$2"; shift 2;;
+        --bump) BUMP=="$2"; shift;;
+        --force-version) VERSION=$2; shift 2;;
+        --) shift; break;
+    esac
+done
+
+debug "RUSER=$RUSER"
+debug "RHOST=$RHOST"
+debug "BUMP=$BUMP"
+
+# Check we have required params
+if [ -z $RUSER ]; then
+    echo $USAGE
+    exit 1
+else if [ -z $RHOST ]; then
+    echo $USAGE
+    exit 1
+fi
+
+getRemotePath
+getVersionElements $CURRENT
+
+if [ -z "$VERSION" ]; then
+    until [ "$BUMP" != "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
+        echo -e "Current version on remote site: ${COL_GREEN}${CURRENT}${COL_RESET}"
+        echo -n "Bump which version Major|mInor|Patch? [m/i/P]? "
+        read $a
+        case $a in
+            M)
+            m) BUMP=major
+            I)
+            i) BUMP=minor
+            P)
+            p) BUMP=patch
+        esac
+    done
+fi
+
+echo "====="
+echo $RPATH
+echo $CURRENT
+echo $MAJOR_VERSION / $MINOR_VERSION / $PATCH_VERSION
+echo $VERSION
+echo $BUMP
+
+
