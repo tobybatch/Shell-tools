@@ -1,11 +1,20 @@
 #!/bin/bash
 
+set -e
+
 source `dirname $0`/colours
+NO_ARGS=0
+VERBOSE=off
 USAGE="$0 [options] remoteuser remotehost"
+
+if [ $# -eq "$NO_ARGS" ]; then
+    echo $USAGE
+    exit 1
+fi
 
 # Set defaults
 DRUPAL_REMOTE_ROOT=/var/www/latest
-DRUPAL_LOCAL_ROOT=/var/www/html/wl
+DRUPAL_LOCAL_ROOT=`pwd`
 
 #################################
 # Functions
@@ -16,77 +25,174 @@ function getRemotePath {
 }
 
 function getVersionElements {
-    export MAJOR_VERSION=`echo $1|awk '{split($0,a,"."); print a[1]}'`
-    export MINOR_VERSION=`echo $1|awk '{split($0,a,"."); print a[2]}'`
-    export PATCH_VERSION=`echo $1|awk '{split($0,a,"."); print a[3]}'`
+    export BRAND=`echo $1|awk '{split($0,a,"_"); print a[1]}'`
+    export NOBC=`echo $1|awk '{split($0,a,"_"); print a[2]}'`
+    if [ "$BRAND" == "$1" ]; then
+        NOBC=$BRAND
+        unset BRAND
+    fi
+    export MAJOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[1]}'`
+    export MINOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[2]}'`
+    export PATCH_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[3]}'`
 }
 
 function debug {
     if [ ! -z "$VERBOSE" ]; then
-        echo -e $msg
+        echo -e $1
     fi
+}
+
+function usage {
+    echo $USAGE
+    cat <<EOF
+Blah Blah
+EOF
 }
 
 # End functions
 ###############################
 
+# OPTS=`getopt -o v -r drupal_remote_root -l drupal_local_root -b bumpup -f force-version: -- "$@"`
 
-# Extended get ipts to support long opts
-OPTS=`getopt -o v -r drupal_remote_root -l drupal_local_root -b bump -f force-version: -- "$@"`
-if [ $? != 0 ]; then
-    exit 1
-fi
-
-eval set -- "$OPTS"
-
-while true; do
-    case $1 in
-        -v) VERBOSE='verbose'; shift;;
-        --drupal_remote_root) DRUPAL_REMOTE_ROOT=="$2"; shift 2;;
-        --drupal_local_root) DRUPAL_LOCAL_ROOT=="$2"; shift 2;;
-        --bump) BUMP=="$2"; shift;;
-        --force-version) VERSION=$2; shift 2;;
-        --) shift; break;
+while getopts "r:l:b:f:vh" options; do
+    case $options in
+        v) VERBOSE='verbose';;
+        h) usage; exit 0;;
+        r) DRUPAL_REMOTE_ROOT="$OPTARG";;
+        l) DRUPAL_LOCAL_ROOT="$OPTARG";;
+        b) BUMP="$OPTARG";;
+        f) RELEASE="$OPTARG";;
     esac
 done
 
-debug "RUSER=$RUSER"
-debug "RHOST=$RHOST"
-debug "BUMP=$BUMP"
+shift $((OPTIND-1))
+RUSER=$1
+RHOST=$2
 
 # Check we have required params
 if [ -z $RUSER ]; then
+    echo -e $COL_RED"Missing remote user"$COL_RESET
     echo $USAGE
     exit 1
-else if [ -z $RHOST ]; then
+elif [ -z $RHOST ]; then
+    echo -e $COL_RED"Missing remote host"$COL_RESET
     echo $USAGE
+    exit 1
+elif [ -z "$DRUPAL_LOCAL_ROOT" ] || [ ! -f "$DRUPAL_LOCAL_ROOT/cron.php" ]; then
+    echo -e $COL_RED"The local drupal root ($DRUPAL_LOCAL_ROOT) does not seem to be a drupal site"$COL_RESET
     exit 1
 fi
 
 getRemotePath
 getVersionElements $CURRENT
 
-if [ -z "$VERSION" ]; then
-    until [ "$BUMP" != "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
+# If we don't have a alias file in the current site we can't proceed
+set +e # turn off exit on error here
+RALIAS=$RPATH/sites/all/drush/$CURRENT.alias.drushrc.php
+ssh $RUSER@$RHOST ls $RALIAS
+if [ "$?" != '0' ]; then
+    echo -e $COL_RED"Cannot find alias file for remote site\n  ssh $RUSER@$RHOST ls $RALIAS"$COL_RESET
+fi
+set -e
+exit
+
+if [ -z "$RELEASE" ]; then
+    until [ "$BUMP" == "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
         echo -e "Current version on remote site: ${COL_GREEN}${CURRENT}${COL_RESET}"
         echo -n "Bump which version Major|mInor|Patch? [m/i/P]? "
-        read $a
+        read a
         case $a in
-            M)
-            m) BUMP=major
-            I)
-            i) BUMP=minor
-            P)
-            p) BUMP=patch
+            M) BUMP=major;;
+            m) BUMP=major;;
+            I) BUMP=minor;;
+            i) BUMP=minor;;
+            P) BUMP=patch;;
+            p) BUMP=patch;;
         esac
     done
+
+    case $BUMP in
+        patch) PATCH_VERSION=$(($PATCH_VERSION + 1));;
+        minor) MINOR_VERSION=$(($MINOR_VERSION + 1));;
+        major) MAJOR_VERSION=$(($MAJOR_VERSION + 1));;
+    esac
+
+    RELEASE="${BRAND}_${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
 fi
 
-echo "====="
-echo $RPATH
-echo $CURRENT
-echo $MAJOR_VERSION / $MINOR_VERSION / $PATCH_VERSION
-echo $VERSION
-echo $BUMP
+# Quick sanity check
+if [ "$BRAND" != `basename $DRUPAL_LOCAL_ROOT` ]; then
+    echo -e $COL_YELLOW"Brand code from remote ($BRAND) != Sniffed BC from $DRUPAL_LOCAL_ROOT"$COL_RESET
+fi
 
+touch $DRUPAL_LOCAL_ROOT/changelog.txt
+echo "+----- $RELEASE -----+" > $DRUPAL_LOCAL_ROOT/changelog.new
+branches -l -p $DRUPAL_LOCAL_ROOT >> $DRUPAL_LOCAL_ROOT/changelog.new
+echo -e "\n" >> $DRUPAL_LOCAL_ROOT/changelog.new
+cat $DRUPAL_LOCAL_ROOT/changelog.txt >> $DRUPAL_LOCAL_ROOT/changelog.new
+mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
 
+ALIAS_FILE=$DRUPAL_LOCAL_ROOT/sites/all/drush/$RELEASE.alias.drushrc.php
+
+echo '<?php' > $ALIAS_FILE
+drush -r $DRUPAL_LOCAL_ROOT sa --full --with-db @self >> $ALIAS_FILE
+sed -i "s/'root' => .*/'root' => '\/var\/www\/$RELEASE',/g" $ALIAS_FILE
+sed -i "s/self/$RELEASE/g" $ALIAS_FILE
+sed -i "/#name/a  '  remote-host' => '${RHOST}'," $ALIAS_FILE
+sed -i "/#name/a  '  remote-user' => '${RUSER}'," $ALIAS_FILE
+
+debug "+-------------------------------------------------+"
+debug "${COL_BLUE}Remote user${COL_RESET}         $RUSER"
+debug "${COL_BLUE}Remote host${COL_RESET}         $RHOST"
+debug "${COL_BLUE}remote path${COL_RESET}         $RPATH"
+debug "${COL_BLUE}local path${COL_RESET}          $DRUPAL_LOCAL_ROOT"
+debug "${COL_BLUE}current${COL_RESET}             $CURRENT"
+debug "${COL_BLUE}version from remote${COL_RESET} $BRAND / $MAJOR_VERSION / $MINOR_VERSION / $PATCH_VERSION"
+debug "${COL_BLUE}version passed${COL_RESET}      $RELEASE"
+debug "${COL_BLUE}bump${COL_RESET}                $BUMP"
+debug "${COL_BLUE}aliasfile${COL_RESET}           $ALIAS_FILE"
+debug "+-------------------------------------------------+"
+
+cat <<EOF
+This command will now push the local site at:
+  ${DRUPAL_LOCAL_ROOT} to ${RHOST}:/var/www/${RELEASE}
+We will create a database on ${RHOST}
+  mysql-create-user-and-db -u $RELEASE -p $RELEASE
+Can sync the databse from:
+  ${RHOST}:/var/www/${CURRENT} to ${RHOST}:/var/www/${RELEASE}
+
+Proceed (y/N)?
+EOF
+
+read a
+if [ "$a" != 'y' ] || [ "$a" != 'Y' ]; then
+    echo Aborting
+    exit 0
+fi
+
+exit
+
+echo Creating remote DB
+if [ -z $MYSQL_ROOT_PASSWORD ]; then
+    echo -e $COL_CYAN"Enter the root password for the remote MySQL instance:"$COL_RESET
+    stty -echo
+    read mysqlroot
+    stty echo
+else
+    mysqlroot=$MYSQL_ROOT_PASSWORD
+fi
+CREATE USER '$user'@'$host' IDENTIFIED BY '$pass'
+GRANT USAGE ON * . * TO '$user'@'$host' IDENTIFIED BY '$pass' WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0
+CREATE DATABASE IF NOT EXISTS \`$name\`
+GRANT ALL PRIVILEGES ON \`$name\` . * TO '$user'@'$host'
+
+ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE"
+echo Preping remote site
+ssh ${RUSER}@${RHOST} rsync -a /var/www/$CURRENT /var/www/$RELEASE
+echo Sync $DRUPAL_LOCAL_ROOT up to $RPATH
+drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs --progress
+echo Importing DB
+drush sql-sync @$CURRENT @$RELEASE
+echo Clear caches
+drush @$RELEASE cc all
+echo Done. You may now need to create/delete symlinks to actaully send it live
