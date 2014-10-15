@@ -85,16 +85,16 @@ fi
 
 getRemotePath
 getVersionElements $CURRENT
+RBASE=`dirname $RPATH`
 
 # If we don't have a alias file in the current site we can't proceed
 set +e # turn off exit on error here
 RALIAS=$RPATH/sites/all/drush/$CURRENT.alias.drushrc.php
-ssh $RUSER@$RHOST ls $RALIAS
+ssh $RUSER@$RHOST ls $RALIAS > /dev/null
 if [ "$?" != '0' ]; then
     echo -e $COL_RED"Cannot find alias file for remote site\n  ssh $RUSER@$RHOST ls $RALIAS"$COL_RESET
 fi
 set -e
-exit
 
 if [ -z "$RELEASE" ]; then
     until [ "$BUMP" == "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
@@ -138,8 +138,8 @@ echo '<?php' > $ALIAS_FILE
 drush -r $DRUPAL_LOCAL_ROOT sa --full --with-db @self >> $ALIAS_FILE
 sed -i "s/'root' => .*/'root' => '\/var\/www\/$RELEASE',/g" $ALIAS_FILE
 sed -i "s/self/$RELEASE/g" $ALIAS_FILE
-sed -i "/#name/a  '  remote-host' => '${RHOST}'," $ALIAS_FILE
-sed -i "/#name/a  '  remote-user' => '${RUSER}'," $ALIAS_FILE
+sed -i "/#name/a  'remote-host' => '${RHOST}'," $ALIAS_FILE
+sed -i "/#name/a  'remote-user' => '${RUSER}'," $ALIAS_FILE
 
 debug "+-------------------------------------------------+"
 debug "${COL_BLUE}Remote user${COL_RESET}         $RUSER"
@@ -165,34 +165,38 @@ Proceed (y/N)?
 EOF
 
 read a
-if [ "$a" != 'y' ] || [ "$a" != 'Y' ]; then
+if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
     echo Aborting
     exit 0
 fi
 
+echo -e $COL_GREEN"Creating remote DB"$COL_RESET
+# if [ -z $MYSQL_ROOT_PASSWORD ]; then
+    # echo -e $COL_CYAN"Enter the root password for the remote MySQL instance:"$COL_RESET
+    # stty -echo
+    # read mysqlroot
+    # stty echo
+# else
+    # mysqlroot=$MYSQL_ROOT_PASSWORD
+# fi
+stty -echo > /dev/null
+set +e
+ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE"
+EXITSTATUS=$?
+stty echo > /dev/null
+if [ "$EXITSTATUS" != 0 ]; then
+    exit 1
+fi
+
+echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
+drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
+
+echo -e $COL_GREEN"Importing DB"$COL_RESET
+echo drush -r $DRUPAL_LOCAL_ROOT sql-sync @$CURRENT @$RELEASE
+
 exit
 
-echo Creating remote DB
-if [ -z $MYSQL_ROOT_PASSWORD ]; then
-    echo -e $COL_CYAN"Enter the root password for the remote MySQL instance:"$COL_RESET
-    stty -echo
-    read mysqlroot
-    stty echo
-else
-    mysqlroot=$MYSQL_ROOT_PASSWORD
-fi
-CREATE USER '$user'@'$host' IDENTIFIED BY '$pass'
-GRANT USAGE ON * . * TO '$user'@'$host' IDENTIFIED BY '$pass' WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0
-CREATE DATABASE IF NOT EXISTS \`$name\`
-GRANT ALL PRIVILEGES ON \`$name\` . * TO '$user'@'$host'
+echo -e $COL_GREEN"Clear caches"$COL_RESET
+drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
 
-ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE"
-echo Preping remote site
-ssh ${RUSER}@${RHOST} rsync -a /var/www/$CURRENT /var/www/$RELEASE
-echo Sync $DRUPAL_LOCAL_ROOT up to $RPATH
-drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs --progress
-echo Importing DB
-drush sql-sync @$CURRENT @$RELEASE
-echo Clear caches
-drush @$RELEASE cc all
-echo Done. You may now need to create/delete symlinks to actaully send it live
+echo -e $COL_GREEN"Done. You may now need to create/delete symlinks to actaully send it live"$COL_RESET
