@@ -188,8 +188,18 @@ if [ "$EXITSTATUS" != 0 ]; then
     exit 1
 fi
 
+echo -e $COL_GREEN"Prepare ${RELEASE}_settings.php for release"$COL_RESET
+LOCAL_SETTINGS=$DRUPAL_LOCAL_ROOT/sites/default/settings.php
+TMP_SETTINGS=$DRUPAL_LOCAL_ROOT/sites/default/${RELEASE}_settings.php
+cp $LOCAL_SETTINGS $TMP_SETTINGS
+sed -i "s/      'database' => .*/      'database' => '$RELEASE',/g" $TMP_SETTINGS
+sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTINGS
+sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
+
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
+REMOTE_SETTINGS=$DRUPAL_REMOTE_ROOT/sites/default/settings.php
+scp $TMP_SETTINGS ${RUSER}@${RHOST}:$REMOTE_SETTINGS
 
 echo -e $COL_GREEN"Importing DB"$COL_RESET
 echo drush -r $DRUPAL_LOCAL_ROOT sql-sync @$CURRENT @$RELEASE
