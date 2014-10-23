@@ -5,7 +5,7 @@ set -e
 source `dirname $0`/colours
 NO_ARGS=0
 VERBOSE=off
-USAGE="$0 [options] remoteuser remotehost"
+USAGE="$0 [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser remotehost"
 
 if [ $# -eq "$NO_ARGS" ]; then
     echo $USAGE
@@ -45,7 +45,40 @@ function debug {
 function usage {
     echo $USAGE
     cat <<EOF
-Blah Blah
+
+Take a local drupal install and publish it to a remote site.  It wll create a
+DB and copy the 'live' site into it. This script needs to have an existing site
+in place to operate on and that site must have a functional drush alias. The 
+files from the local site will be pushed up to the live site and the current
+live site databse will be copied into the new drupal.
+
+Manadtory Parameters
+--------------------
+remoteuser
+  This user MUST have passwordless key based authentication to the remote 
+  server. An ssh-agent can be used but the process should be non-interactive
+remotehost
+  The host to publish the site to.
+
+Optional Parameters
+-------------------
+-v
+  Be verbose
+-h
+  Print this message
+-r remote-drupal-root
+  The path to the root of the current drupal root. It is the DB from this
+  instance that will be installed into the new release. Defaults to:
+  /var/www/latest
+-b <major|minor|bump>]
+  Sites are release in a x.y.z format where versions are major.minor.patch
+  The script will bump that version by one in the category specified. If
+  ommitted the script will ask.
+-f release
+  If specified this release value will override the m.m.p number
+-m mysql-root-pass
+  The script expects to find the remote mysql root password in an environment
+  variable MYSQL_ROOT_PASSWORD. This parameter can override that.
 EOF
 }
 
@@ -54,7 +87,7 @@ EOF
 
 # OPTS=`getopt -o v -r drupal_remote_root -l drupal_local_root -b bumpup -f force-version: -- "$@"`
 
-while getopts "r:l:b:f:vh" options; do
+while getopts "r:l:b:f:m:vh" options; do
     case $options in
         v) VERBOSE='verbose';;
         h) usage; exit 0;;
@@ -62,6 +95,7 @@ while getopts "r:l:b:f:vh" options; do
         l) DRUPAL_LOCAL_ROOT="$OPTARG";;
         b) BUMP="$OPTARG";;
         f) RELEASE="$OPTARG";;
+        m) MYSQL_ROOT_PASSWORD="$OPTARG";; 
     esac
 done
 
@@ -171,17 +205,7 @@ if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
 fi
 
 echo -e $COL_GREEN"Creating remote DB"$COL_RESET
-# if [ -z $MYSQL_ROOT_PASSWORD ]; then
-    # echo -e $COL_CYAN"Enter the root password for the remote MySQL instance:"$COL_RESET
-    # stty -echo
-    # read mysqlroot
-    # stty echo
-# else
-    # mysqlroot=$MYSQL_ROOT_PASSWORD
-# fi
-stty -echo > /dev/null
-set +e
-ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE"
+ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE -r $MYSQL_ROOT_PASSWORD"
 EXITSTATUS=$?
 stty echo > /dev/null
 if [ "$EXITSTATUS" != 0 ]; then

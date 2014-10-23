@@ -52,6 +52,8 @@ else
     printf "${COL_GREEN}%-25s %-20s %s${COL_RESET}\n" Name Branch Path
 fi
 
+EXITSTATE=0
+
 for var in "$@"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
@@ -68,7 +70,7 @@ for var in "$@"; do
                 diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt}`
                 if [ ! -z "$diff" ]; then
                     printf "\n%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
-                    $EXITSTATE=$(($EXITSTATE + 1))
+                    EXITSTATE=$(($EXITSTATE + 1))
                 else
                     printf "\n%-25s %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
