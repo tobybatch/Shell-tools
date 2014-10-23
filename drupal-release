@@ -222,7 +222,7 @@ sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTING
 
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
-REMOTE_SETTINGS=$DRUPAL_REMOTE_ROOT/sites/default/settings.php
+REMOTE_SETTINGS=/var/www/$RELEASE/sites/default/settings.php
 scp $TMP_SETTINGS ${RUSER}@${RHOST}:$REMOTE_SETTINGS
 
 echo -e $COL_GREEN"Importing DB"$COL_RESET
