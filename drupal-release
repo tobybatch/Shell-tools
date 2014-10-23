@@ -205,7 +205,7 @@ if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
 fi
 
 echo -e $COL_GREEN"Creating remote DB"$COL_RESET
-ssh ${RUSER}@${RHOST} "mysql-create-user-and-db -u $RELEASE -p $RELEASE -r $MYSQL_ROOT_PASSWORD"
+ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
 EXITSTATUS=$?
 stty echo > /dev/null
 if [ "$EXITSTATUS" != 0 ]; then

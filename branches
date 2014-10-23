@@ -59,8 +59,6 @@ if [ ! -z "$@" ]; then
 else
     ROOTPATH=`pwd`
 fi
-echo Root path = "'$ROOTPATH'"
-echo dollar at = "'$@'"
 
 for var in "$ROOTPATH"; do
     if [ -d $var ]; then
@@ -74,13 +72,13 @@ for var in "$ROOTPATH"; do
             name=`basename $dir`
             branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
             if [ ! -z "$latesttag" ]; then
-                lt=`$GITCMD describe --abbrev=0 --tags`
-                diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt}`
+                lt=`$GITCMD describe --abbrev=0 --tags 2> /dev/null`
+                diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt} 2> /dev/null`
                 if [ ! -z "$diff" ]; then
-                    printf "\n%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
                     EXITSTATE=$(($EXITSTATE + 1))
                 else
-                    printf "\n%-25s %-20s %-10s %s\n" $name $branch $lt $dir
+                    printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
             else
                 printf "\n%-25s %-20s %s\n" $name $branch $dir
