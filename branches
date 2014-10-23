@@ -4,17 +4,7 @@ NO_ARGS=0
 USAGE="`basename $0` [-f] [-l] [-p] [-b branch] path/to/drupal"
 EXITSTATE=0
 
-while getopts "b:lpf" options; do
-    case $options in
-        b) newbranch="$OPTARG";;
-        l) latesttag=1;;
-        p) plainoutput=1;;
-        f) fetchorigin=1;;
-    esac
-done
-
-if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
-then
+function usage {
     echo $USAGE
     cat <<EOF
 Search the file system down from the specified path looking for git repos.
@@ -32,8 +22,19 @@ Optional a new named branch can be created and checkout out/pulled.
     If specified and the remote branch exists then a the branch is checked out
     and pulled. Existing changes will be stashed, and then applied.
 EOF
-    exit 1
-fi
+}
+
+while getopts "b:lpf" options; do
+    case $options in
+        b) newbranch="$OPTARG";;
+        l) latesttag=1;;
+        p) plainoutput=1;;
+        f) fetchorigin=1;;
+        h) usage; exit;;
+    esac
+done
+
+shift $((OPTIND-1))
 
 if [ -z "$plainoutput" ]; then
     ESC_SEQ="\x1b["
@@ -53,8 +54,15 @@ else
 fi
 
 EXITSTATE=0
+if [ ! -z "$@" ]; then
+    ROOTPATH=$@
+else
+    ROOTPATH=`pwd`
+fi
+echo Root path = "'$ROOTPATH'"
+echo dollar at = "'$@'"
 
-for var in "$@"; do
+for var in "$ROOTPATH"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
             GITCMD="git -C `dirname $x`"
