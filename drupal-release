@@ -222,13 +222,20 @@ sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTING
 
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
+
+echo -e $COL_GREEN"Fixing permissions"$COL_RESET
+ssh ${RUSER}@${RHOST} find /var/www/$RELEASE -type d -exec chmod 2775 {} \;
+ssh ${RUSER}@${RHOST} find /var/www/$RELEASE -type f -exec chmod 2664 {} \;
+
+echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
+echo -e $COL_YELLOW"  sudo chown -R $RUSER:www-data /var/www/$RELEASE/sites/*/files"$COL_RESET
+
 REMOTE_SETTINGS=/var/www/$RELEASE/sites/default/settings.php
 scp $TMP_SETTINGS ${RUSER}@${RHOST}:$REMOTE_SETTINGS
+ssh ${RUSER}@${RHOST} chmod a-w /var/www/$RELEASE/sites/default/settings.php /var/www/$RELEASE/sites/*
 
 echo -e $COL_GREEN"Importing DB"$COL_RESET
 echo drush -r $DRUPAL_LOCAL_ROOT sql-sync @$CURRENT @$RELEASE
-
-exit
 
 echo -e $COL_GREEN"Clear caches"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
