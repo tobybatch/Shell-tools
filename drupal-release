@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 source `dirname $0`/colours
 NO_ARGS=0
@@ -221,21 +222,24 @@ sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTING
 sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
 
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
-drush -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
+drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
 
 echo -e $COL_GREEN"Fixing permissions"$COL_RESET
-ssh ${RUSER}@${RHOST} find /var/www/$RELEASE -type d -exec chmod 2775 {} \;
-ssh ${RUSER}@${RHOST} find /var/www/$RELEASE -type f -exec chmod 2664 {} \;
+ssh ${RUSER}@${RHOST} "find /var/www/$RELEASE -type d -exec chmod 2775 {} \;"
+ssh ${RUSER}@${RHOST} "find /var/www/$RELEASE -type f -exec chmod 2664 {} \;"
 
 echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
-echo -e $COL_YELLOW"  sudo chown -R $RUSER:www-data /var/www/$RELEASE/sites/*/files"$COL_RESET
+echo -e $COL_YELLOW"  sudo chown -R www-data:www-data /var/www/$RELEASE/sites/*/files"$COL_RESET
 
 REMOTE_SETTINGS=/var/www/$RELEASE/sites/default/settings.php
 scp $TMP_SETTINGS ${RUSER}@${RHOST}:$REMOTE_SETTINGS
 ssh ${RUSER}@${RHOST} chmod a-w /var/www/$RELEASE/sites/default/settings.php /var/www/$RELEASE/sites/*
 
-echo -e $COL_GREEN"Importing DB"$COL_RESET
-echo drush -r $DRUPAL_LOCAL_ROOT sql-sync @$CURRENT @$RELEASE
+echo -e $COL_GREEN"Dumping remote DB"$COL_RESET
+ssh ${RUSER}@${RHOST} drush -r /var/www/$CURRENT sql-dump --result-file=/tmp/dump.sql
+echo -e $COL_GREEN"Importing remote DB"$COL_RESET
+ssh ${RUSER}@${RHOST} "drush -r /var/www/$RELEASE sql-cli < /tmp/dump.sql"
+ssh ${RUSER}@${RHOST} rm /tmp/dump.sql
 
 echo -e $COL_GREEN"Clear caches"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
