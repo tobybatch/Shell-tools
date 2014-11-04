@@ -48,10 +48,14 @@ fi
 
 if [ -z $MYSQL_ROOT_PASSWORD ]
 then
-    echo -e $COL_CYAN"Enter the root password for your MySQL instance:"$COL_RESET
-    stty -echo
-    read mysqlroot
-    stty echo
+    if [ -f /etc/mysql/mysecret ]; then
+        mysqlroot=`cat /etc/mysql/mysecret`
+    else
+        echo -e $COL_CYAN"Enter the root password for your MySQL instance:"$COL_RESET
+        stty -echo
+        read mysqlroot
+        stty echo
+    fi
 else
     mysqlroot=$MYSQL_ROOT_PASSWORD
 fi
