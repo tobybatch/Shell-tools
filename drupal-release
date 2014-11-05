@@ -224,7 +224,13 @@ sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTING
 sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
 
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
-drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs
+set +e
+drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
+if [ "$?" != "0" ]; then
+    echo -e $COL_RED"There where errors stncing files, check output above"$COL_RESET
+fi
+ssh ${RUSER}@${RHOST} "rsync -a -O --no-p --no-o /var/www/${CURRENT}/sites/default/files /var/www/${RELEASE}/sites/default"
+set -e
 
 echo -e $COL_GREEN"Fixing permissions"$COL_RESET
 ssh ${RUSER}@${RHOST} "find /var/www/$RELEASE -type d -exec chmod 2775 {} \;"
