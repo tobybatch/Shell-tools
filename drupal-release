@@ -170,6 +170,7 @@ cat $DRUPAL_LOCAL_ROOT/changelog.txt >> $DRUPAL_LOCAL_ROOT/changelog.new
 mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
 
 ALIAS_FILE=$DRUPAL_LOCAL_ROOT/sites/all/drush/$RELEASE.alias.drushrc.php
+echo "Local alias file: $ALIAS_FILE"
 
 echo '<?php' > $ALIAS_FILE
 drush -r $DRUPAL_LOCAL_ROOT sa --full --with-db @self >> $ALIAS_FILE
@@ -177,6 +178,9 @@ sed -i "s/'root' => .*/'root' => '\/var\/www\/$RELEASE',/g" $ALIAS_FILE
 sed -i "s/self/$RELEASE/g" $ALIAS_FILE
 sed -i "/#name/a  'remote-host' => '${RHOST}'," $ALIAS_FILE
 sed -i "/#name/a  'remote-user' => '${RUSER}'," $ALIAS_FILE
+sed -i "s/        'database' => .*/      'database' => '$RELEASE',/g" $ALIAS_FILE
+sed -i "s/        'username' => .*/      'username' => '$RELEASE',/g" $ALIAS_FILE
+sed -i "s/        'password' => .*/      'password' => '$RELEASE',/g" $ALIAS_FILE
 
 debug "+-------------------------------------------------+"
 debug "${COL_BLUE}Remote user${COL_RESET}         $RUSER"
