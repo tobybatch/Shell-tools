@@ -1,0 +1,12 @@
+#!/bin/bash
+
+CUR_TAG=$1
+NEW_TAG=$2
+echo $NEW_TAG > newchangelog.txt
+echo "======" >> newchangelog.txt
+git log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> newchangelog.txt
+cat changelog.txt >> newchangelog.txt
+mv newchangelog.txt changelog.txt
+git commit -a -m 'Updated change log'
+git tag $NEW_TAG
+git push origin master --tags
