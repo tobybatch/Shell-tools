@@ -31,7 +31,7 @@ for x in "$@"; do
     RUSER=`echo $x | awk -F @ '{print $1}'`
     RHOST=`echo $x | awk -F @ '{print $2}'`
 
-    echo $CMD $RUSER $RHOST
+    $CMD $RUSER $RHOST
 done
 
 
