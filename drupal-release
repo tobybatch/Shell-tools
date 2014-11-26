@@ -256,6 +256,9 @@ ssh ${RUSER}@${RHOST} rm /tmp/dump.sql
 echo -e $COL_GREEN"Compiling SASS"$COL_RESET
 ssh ${RUSER}@${RHOST} "for x in `ls -d /var/www/$RELEASE/sites/all/themes/*theme`; do compass compile $x; done"
 
+echo -e $COL_GREEN"Compiling SASS"$COL_RESET
+drush -r $DRUPAL_LOCAL_ROOT @$RELEASE updb
+
 echo -e $COL_GREEN"Clear caches"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
 
