@@ -76,7 +76,9 @@ for var in "$ROOTPATH"; do
                 diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt} 2> /dev/null`
                 if [ ! -z "$diff" ]; then
                     printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
-                    EXITSTATE=$(($EXITSTATE + 1))
+                    if [ "$name" != "tabs-api-client" ]; then
+                        EXITSTATE=$(($EXITSTATE + 1))
+                    fi
                 else
                     printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
