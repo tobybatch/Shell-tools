@@ -161,6 +161,7 @@ fi
 
 touch $DRUPAL_LOCAL_ROOT/changelog.txt
 echo "+----- $RELEASE -----+" > $DRUPAL_LOCAL_ROOT/changelog.new
+date +"%y-%m-%d_%H-%M" >> $DRUPAL_LOCAL_ROOT/changelog.new
 branches -l -p $DRUPAL_LOCAL_ROOT >> $DRUPAL_LOCAL_ROOT/changelog.new
 if [ "$?" != 0 ]; then
     echo $COL_RED"Git branches are out of sync: 'branches -l -p $DRUPAL_LOCAL_ROOT'"$COL_RESET
