@@ -193,6 +193,7 @@ debug "${COL_BLUE}version from remote${COL_RESET} $BRAND / $MAJOR_VERSION / $MIN
 debug "${COL_BLUE}version passed${COL_RESET}      $RELEASE"
 debug "${COL_BLUE}bump${COL_RESET}                $BUMP"
 debug "${COL_BLUE}aliasfile${COL_RESET}           $ALIAS_FILE"
+debug "${COL_BLUE}Mysql root pass${COL_RESET}     $MYSQL_ROOT_PASSWORD"
 debug "+-------------------------------------------------+"
 
 cat <<EOF
@@ -257,7 +258,7 @@ ssh ${RUSER}@${RHOST} rm /tmp/dump.sql
 echo -e $COL_GREEN"Compiling SASS"$COL_RESET
 ssh ${RUSER}@${RHOST} "for x in `ls -d /var/www/$RELEASE/sites/all/themes/*theme`; do compass compile $x; done"
 
-echo -e $COL_GREEN"Compiling SASS"$COL_RESET
+echo -e $COL_GREEN"Running drush updb"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT @$RELEASE updb
 
 echo -e $COL_GREEN"Clear caches"$COL_RESET
