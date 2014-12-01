@@ -20,7 +20,7 @@ DRUPAL_LOCAL_ROOT=`pwd`
 # Functions
 
 function getRemotePath {
-    export RPATH=`ssh $RUSER@$RHOST realpath /var/www/latest`
+    export RPATH=`ssh $RUSER@$RHOST realpath /var/www/testing`
     export CURRENT=`basename $RPATH`
 }
 
@@ -34,6 +34,17 @@ function getVersionElements {
     export MAJOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[1]}'`
     export MINOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[2]}'`
     export PATCH_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[3]}'`
+}
+
+function aliasname {
+    aliasname=$(echo $1 | awk -F '.' '{print $1}')
+    isnumeric=$(echo $aliasname | grep "[^0-9]")
+    if [ -z "$isnumeric" ]; then
+      # The first element is a numer, it's probably an IP
+      echo $1
+    else
+      echo $aliasname
+    fi
 }
 
 function debug {
@@ -121,9 +132,11 @@ getRemotePath
 getVersionElements $CURRENT
 RBASE=`dirname $RPATH`
 
+CURRENT_ALIAS=$(aliasname $RHOST)
+
 # If we don't have a alias file in the current site we can't proceed
 set +e # turn off exit on error here
-RALIAS=$RPATH/sites/all/drush/$CURRENT.alias.drushrc.php
+RALIAS=$RPATH/sites/all/drush/$CURRENT.$CURRENT_ALIAS.alias.drushrc.php
 ssh $RUSER@$RHOST ls $RALIAS > /dev/null
 if [ "$?" != '0' ]; then
     echo -e $COL_RED"Cannot find alias file for remote site\n  ssh $RUSER@$RHOST ls $RALIAS"$COL_RESET
@@ -170,7 +183,8 @@ echo -e "\n" >> $DRUPAL_LOCAL_ROOT/changelog.new
 cat $DRUPAL_LOCAL_ROOT/changelog.txt >> $DRUPAL_LOCAL_ROOT/changelog.new
 mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
 
-ALIAS_FILE=$DRUPAL_LOCAL_ROOT/sites/all/drush/$RELEASE.alias.drushrc.php
+RELEASE_ALIAS=$(aliasname $RHOST)
+ALIAS_FILE=$DRUPAL_LOCAL_ROOT/sites/all/drush/$RELEASE.$RELEASE_ALIAS.alias.drushrc.php
 echo "Local alias file: $ALIAS_FILE"
 
 echo '<?php' > $ALIAS_FILE
