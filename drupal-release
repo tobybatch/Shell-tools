@@ -190,7 +190,7 @@ echo "Local alias file: $ALIAS_FILE"
 echo '<?php' > $ALIAS_FILE
 drush -r $DRUPAL_LOCAL_ROOT sa --full --with-db @self >> $ALIAS_FILE
 sed -i "s/'root' => .*/'root' => '\/var\/www\/$RELEASE',/g" $ALIAS_FILE
-sed -i "s/self/$RELEASE/g" $ALIAS_FILE
+sed -i "s/self/${RELEASE}.${RELEASE_ALIAS}/g" $ALIAS_FILE
 sed -i "/#name/a  'remote-host' => '${RHOST}'," $ALIAS_FILE
 sed -i "/#name/a  'remote-user' => '${RUSER}'," $ALIAS_FILE
 sed -i "s/        'database' => .*/      'database' => '$RELEASE',/g" $ALIAS_FILE
@@ -208,6 +208,7 @@ debug "${COL_BLUE}version passed${COL_RESET}      $RELEASE"
 debug "${COL_BLUE}bump${COL_RESET}                $BUMP"
 debug "${COL_BLUE}aliasfile${COL_RESET}           $ALIAS_FILE"
 debug "${COL_BLUE}Mysql root pass${COL_RESET}     $MYSQL_ROOT_PASSWORD"
+debug "${COL_BLUE}Alias file${COL_RESET}          $RELEASE_ALIAS"
 debug "+-------------------------------------------------+"
 
 cat <<EOF
@@ -227,14 +228,6 @@ if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
     exit 0
 fi
 
-echo -e $COL_GREEN"Creating remote DB"$COL_RESET
-ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
-EXITSTATUS=$?
-stty echo > /dev/null
-if [ "$EXITSTATUS" != 0 ]; then
-    exit 1
-fi
-
 echo -e $COL_GREEN"Prepare ${RELEASE}_settings.php for release"$COL_RESET
 LOCAL_SETTINGS=$DRUPAL_LOCAL_ROOT/sites/default/settings.php
 TMP_SETTINGS=$DRUPAL_LOCAL_ROOT/sites/default/${RELEASE}_settings.php
@@ -245,9 +238,10 @@ sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTING
 
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
 set +e
-drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @$RELEASE --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
+drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @${RELEASE}.${RELEASE_ALIAS} --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
 if [ "$?" != "0" ]; then
-    echo -e $COL_RED"There where errors stncing files, check output above"$COL_RESET
+    echo -e $COL_RED"There where errors syncing files, check output above"$COL_RESET
+    exit 1
 fi
 ssh ${RUSER}@${RHOST} "rsync -a -O --no-p --no-o /var/www/${CURRENT}/sites/default/files /var/www/${RELEASE}/sites/default"
 set -e
@@ -265,6 +259,10 @@ ssh ${RUSER}@${RHOST} chmod a-w /var/www/$RELEASE/sites/default/settings.php /va
 
 echo -e $COL_GREEN"Dumping remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} drush -r /var/www/$CURRENT sql-dump --result-file=/tmp/dump.sql
+
+echo -e $COL_GREEN"Creating remote DB"$COL_RESET
+ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
+
 echo -e $COL_GREEN"Importing remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} "drush -r /var/www/$RELEASE sql-cli < /tmp/dump.sql"
 ssh ${RUSER}@${RHOST} rm /tmp/dump.sql
