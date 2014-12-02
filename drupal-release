@@ -285,6 +285,9 @@ ssh ${RUSER}@${RHOST} "for x in `ls -d /var/www/$RELEASE/sites/all/themes/*theme
 echo -e $COL_GREEN"Running drush up"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE up
 
+echo -e $COL_GREEN"Running drush updb"$COL_RESET
+drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE updb
+
 echo -e $COL_GREEN"Clear caches"$COL_RESET
 drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
 
