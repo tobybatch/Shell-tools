@@ -237,13 +237,11 @@ sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTING
 sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
 
 echo -e $COL_GREEN"Pre-syncing /var/www/${CURRENT} up to /var/www/${RELEASE}"$COL_RESET
-echo ssh ${RUSER}@${RHOST} "rsync -a -O --no-p --no-o /var/www/${CURRENT} /var/www/${RELEASE}"
+ssh ${RUSER}@${RHOST} "mkdir -p /var/www/${RELEASE} && rsync -a -O --no-p --no-o /var/www/${CURRENT}/ /var/www/${RELEASE}/"
 
-echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
+echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT/* up to ${RUSER}@${RHOST}:/var/www/${RELEASE}"$COL_RESET
 set +e
-echo rsync -a $DRUPAL_LOCAL_ROOT/* ${RUSER}@${RHOST}:$RPATH
-exit
-# drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @${RELEASE}.${RELEASE_ALIAS} --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
+rsync -a $DRUPAL_LOCAL_ROOT/* ${RUSER}@${RHOST}:/var/www/${RELEASE}
 if [ "$?" != "0" ]; then
     echo -e $COL_RED"There where errors syncing files, check output above"$COL_RESET
     exit 1
@@ -272,7 +270,7 @@ set -e
 if [ "$?" != 0]; then
     SQL_FILE=/var/tmp/`date +"%y-%m-%d_%H-%M"`.sql
     echo -e $COL_GREEN"Saving existiung dump to $SQL_FILE"$COL_RESET
-    cp $=/tmp/dump.sql $SQL_FILE
+    cp /tmp/dump.sql $SQL_FILE
 fi
 
 echo -e $COL_GREEN"Importing remote DB"$COL_RESET
@@ -283,12 +281,12 @@ echo -e $COL_GREEN"Compiling SASS"$COL_RESET
 ssh ${RUSER}@${RHOST} "for x in `ls -d /var/www/$RELEASE/sites/all/themes/*theme`; do compass compile $x; done"
 
 echo -e $COL_GREEN"Running drush up"$COL_RESET
-drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE up
+drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE.$RELEASE_ALIAS up
 
 echo -e $COL_GREEN"Running drush updb"$COL_RESET
-drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE updb
+drush -r $DRUPAL_LOCAL_ROOT -y @$RELEASE.$RELEASE_ALIAS updb
 
 echo -e $COL_GREEN"Clear caches"$COL_RESET
-drush -r $DRUPAL_LOCAL_ROOT @$RELEASE cc all
+drush -r $DRUPAL_LOCAL_ROOT @$RELEASE.$RELEASE_ALIAS cc all
 
 echo -e $COL_GREEN"Done. You may now need to create/delete symlinks to actaully send it live"$COL_RESET
