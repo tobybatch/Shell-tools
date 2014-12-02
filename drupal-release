@@ -236,9 +236,14 @@ sed -i "s/      'database' => .*/      'database' => '$RELEASE',/g" $TMP_SETTING
 sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTINGS
 sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
 
+echo -e $COL_GREEN"Pre-syncing /var/www/${CURRENT} up to /var/www/${RELEASE}"$COL_RESET
+echo ssh ${RUSER}@${RHOST} "rsync -a -O --no-p --no-o /var/www/${CURRENT} /var/www/${RELEASE}"
+
 echo -e $COL_GREEN"Sync $DRUPAL_LOCAL_ROOT up to $RPATH"$COL_RESET
 set +e
-drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @${RELEASE}.${RELEASE_ALIAS} --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
+echo rsync -a $DRUPAL_LOCAL_ROOT/* ${RUSER}@${RHOST}:$RPATH
+exit
+# drush -y -r $DRUPAL_LOCAL_ROOT rsync @self @${RELEASE}.${RELEASE_ALIAS} --include-conf --include-vcs -O --exclude-paths="*.sass-cache*"
 if [ "$?" != "0" ]; then
     echo -e $COL_RED"There where errors syncing files, check output above"$COL_RESET
     exit 1
@@ -261,7 +266,14 @@ echo -e $COL_GREEN"Dumping remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} drush -r /var/www/$CURRENT sql-dump --result-file=/tmp/dump.sql
 
 echo -e $COL_GREEN"Creating remote DB"$COL_RESET
+set +e
 ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
+set -e
+if [ "$?" != 0]; then
+    SQL_FILE=/var/tmp/`date +"%y-%m-%d_%H-%M"`.sql
+    echo -e $COL_GREEN"Saving existiung dump to $SQL_FILE"$COL_RESET
+    cp $=/tmp/dump.sql $SQL_FILE
+fi
 
 echo -e $COL_GREEN"Importing remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} "drush -r /var/www/$RELEASE sql-cli < /tmp/dump.sql"
