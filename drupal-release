@@ -267,7 +267,7 @@ echo -e $COL_GREEN"Creating remote DB"$COL_RESET
 set +e
 ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
 set -e
-if [ "$?" != 0]; then
+if [ "$?" != "0" ]; then
     SQL_FILE=/var/tmp/`date +"%y-%m-%d_%H-%M"`.sql
     echo -e $COL_GREEN"Saving existiung dump to $SQL_FILE"$COL_RESET
     cp /tmp/dump.sql $SQL_FILE
