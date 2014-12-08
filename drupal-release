@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO Check permission before starting
+# TODO Dump both dbs as single line inserts and diff them
+
 set -e
 
 source `dirname $0`/colours
@@ -16,42 +19,7 @@ fi
 DRUPAL_REMOTE_ROOT=/var/www/latest
 DRUPAL_LOCAL_ROOT=`pwd`
 
-#################################
-# Functions
-
-function getRemotePath {
-    export RPATH=`ssh $RUSER@$RHOST realpath /var/www/testing`
-    export CURRENT=`basename $RPATH`
-}
-
-function getVersionElements {
-    export BRAND=`echo $1|awk '{split($0,a,"_"); print a[1]}'`
-    export NOBC=`echo $1|awk '{split($0,a,"_"); print a[2]}'`
-    if [ "$BRAND" == "$1" ]; then
-        NOBC=$BRAND
-        unset BRAND
-    fi
-    export MAJOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[1]}'`
-    export MINOR_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[2]}'`
-    export PATCH_VERSION=`echo $NOBC|awk '{split($0,a,"."); print a[3]}'`
-}
-
-function aliasname {
-    aliasname=$(echo $1 | awk -F '.' '{print $1}')
-    isnumeric=$(echo $aliasname | grep "[^0-9]")
-    if [ -z "$isnumeric" ]; then
-      # The first element is a numer, it's probably an IP
-      echo $1
-    else
-      echo $aliasname
-    fi
-}
-
-function debug {
-    if [ ! -z "$VERBOSE" ]; then
-        echo -e $1
-    fi
-}
+source `dirname $0`/drupal-functions
 
 function usage {
     echo $USAGE
@@ -113,6 +81,22 @@ done
 shift $((OPTIND-1))
 RUSER=$1
 RHOST=$2
+
+# check the most common write permission
+if [ ! -w "$DRUPAL_LOCAL_ROOT" ] ; then
+    echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}. Writting change log will fail."$COL_RESET
+    exit 1
+fi
+
+if [ ! -w "$DRUPAL_LOCAL_ROOT/sites/all/drush" ] ; then
+    echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}/sites/all/drush. Writting alias file log will fail."$COL_RESET
+    exit 1
+fi
+
+if [ ! -w "$DRUPAL_LOCAL_ROOT/sites/default" ] ; then
+    echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}/sites/default Writting new settings file log will fail."$COL_RESET
+    exit 1
+fi
 
 # Check we have required params
 if [ -z $RUSER ]; then
@@ -259,6 +243,11 @@ ssh ${RUSER}@${RHOST} chmod a-w /var/www/$RELEASE/sites/default/settings.php /va
 
 echo -e $COL_GREEN"Dumping remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} drush -r /var/www/$CURRENT sql-dump --result-file=/tmp/dump.sql
+
+echo -e $COL_GREEN"Diffing DBs to $DRUPAL_LOCAL_ROOT/${CURRENT}-${RELEASE}.diff"$COL_RESET
+ssh ${RUSER}@${RHOST} drush -r /var/www/$CURRENT sql-dump --ordered-dump > /tmp/${CURRENT}.sql
+drush -r $DRUPAL_LOCAL_ROOT sql-dump --ordered-dump > /tmp/${RELEASE}.sql
+diff /tmp/${CURRENT}.sql /tmp/${RELEASE}.sql > $DRUPAL_LOCAL_ROOT/${CURRENT}-${RELEASE}.diff
 
 echo -e $COL_GREEN"Creating remote DB"$COL_RESET
 ssh ${RUSER}@${RHOST} "bash mysql-create-user-and-db -u $RELEASE -p $RELEASE -m $MYSQL_ROOT_PASSWORD"
