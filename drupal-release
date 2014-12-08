@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# TODO Check permission before starting
 # TODO Dump both dbs as single line inserts and diff them
 
 set -e
@@ -85,16 +84,20 @@ RHOST=$2
 # check the most common write permission
 if [ ! -w "$DRUPAL_LOCAL_ROOT" ] ; then
     echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}. Writting change log will fail."$COL_RESET
+    echo -e $COL_CYAN"chown $USER:`id -gn $USER` ${DRUPAL_LOCAL_ROOT}"$COL_RESET
+    echo -e $COL_CYAN"chown $USER:`id -gn $USER` ${DRUPAL_LOCAL_ROOT}/changelog.txt"$COL_RESET
     exit 1
 fi
 
 if [ ! -w "$DRUPAL_LOCAL_ROOT/sites/all/drush" ] ; then
     echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}/sites/all/drush. Writting alias file log will fail."$COL_RESET
+    echo -e $COL_CYAN"chown $USER:`id -gn $USER` ${DRUPAL_LOCAL_ROOT}/sites/all/drush"$COL_RESET
     exit 1
 fi
 
 if [ ! -w "$DRUPAL_LOCAL_ROOT/sites/default" ] ; then
     echo -e $COL_RED"Cannot write to ${DRUPAL_LOCAL_ROOT}/sites/default Writting new settings file log will fail."$COL_RESET
+    echo -e $COL_CYAN"chown $USER:`id -gn $USER` ${DRUPAL_LOCAL_ROOT}/sites/default"$COL_RESET
     exit 1
 fi
 
