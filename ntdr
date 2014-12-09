@@ -77,15 +77,17 @@ ntdr_debug "${COL_CYAN}CURRENT_TEST_VERSION${COL_RESET} ${CURRENT_TEST_VERSION}"
 mkdir -p ~/.nt_tabs
 # Get the database from latest
 echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
-DUMP_FILE=~/.nt_tabs/$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
+DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
 ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR $DUMP_FILE
+ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$DUMP_FILE
+scp $RUSER@$RC_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
 
 # Get the database from testing
 echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
-DUMP_FILE=~/.nt_tabs/$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
+DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
 ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR $DUMP_FILE
+ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$DUMP_FILE
+scp $RUSER@$TEST_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
 
 if [ -z "$RELEASE" ]; then
     echo -e "${COL_GREEN}Computing version numbers from${COL_RESET} testing version  ${CURRENT_TEST_VERSION} (Live: ${CURRENT_LIVE_VERSION})"
@@ -132,7 +134,9 @@ ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR} ${NEW_REMOTE_PATH}
 ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR} ${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Sync up${COL_RESET}"
+ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
 rsync -a ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
+ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
 rsync -a ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Over sync files${COL_RESET}"
@@ -146,18 +150,18 @@ echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you ma
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
 
 echo -e "${COL_GREEN}Upload db to both${COL_RESET}"
-drush @${NEW_VERSION}.rc sqlc < ${DUMP_FILE}
-drush @${NEW_VERSION}.testing sqlc < ${DUMP_FILE}
+drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${DUMP_FILE}
+drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${DUMP_FILE}
 
 echo -e "${COL_GREEN}Drush up${COL_RESET}"
-drush @${NEW_VERSION}.rc up < ${DUMP_FILE}
-drush @${NEW_VERSION}.testing up < ${DUMP_FILE}
+drush @${NEW_VERSION}.rc up
+drush @${NEW_VERSION}.testing up
 
 echo -e "${COL_GREEN}Drush updb${COL_RESET}"
-drush @${NEW_VERSION}.rc updb < ${DUMP_FILE}
-drush @${NEW_VERSION}.testing updb < ${DUMP_FILE}
+drush @${NEW_VERSION}.rc updb
+drush @${NEW_VERSION}.testing updb
 
 echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
-drush @${NEW_VERSION}.rc cc all < ${DUMP_FILE}
-drush @${NEW_VERSION}.testing cc all < ${DUMP_FILE}
+drush @${NEW_VERSION}.rc cc all
+drush @${NEW_VERSION}.testing cc all
 
