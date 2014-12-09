@@ -15,7 +15,6 @@ if [ $# -eq "$NO_ARGS" ]; then
 fi
 
 # Set defaults
-DRUPAL_REMOTE_ROOT=/var/www/latest
 DRUPAL_LOCAL_ROOT=`pwd`
 
 source `dirname $0`/drupal-functions
@@ -115,7 +114,24 @@ elif [ -z "$DRUPAL_LOCAL_ROOT" ] || [ ! -f "$DRUPAL_LOCAL_ROOT/cron.php" ]; then
     exit 1
 fi
 
-getRemotePath
+if [ -z "$DRUPAL_REMOTE_ROOT" ]; then
+    ssh $RUSER@$RHOST ls -d /var/www/latest
+    if [ "$?" == 0 ]; then
+        DRUPAL_REMOTE_ROOT=/var/www/latest
+    else
+        ssh $RUSER@$RHOST ls -d /var/www/testing
+        if [ "$?" == 0 ]; then
+            DRUPAL_REMOTE_ROOT=/var/www/testing
+        fi
+    fi
+fi
+
+if [ -z "$DRUPAL_REMOTE_ROOT" ]; then 
+    echo -e $COL_RED"Cannot locate remote drupal root"$COL_RESET
+    exit 1
+fi
+
+getRemotePath $DRUPAL_REMOTE_ROOT
 getVersionElements $CURRENT
 RBASE=`dirname $RPATH`
 
@@ -130,29 +146,7 @@ if [ "$?" != '0' ]; then
 fi
 set -e
 
-if [ -z "$RELEASE" ]; then
-    until [ "$BUMP" == "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
-        echo -e "Current version on remote site: ${COL_GREEN}${CURRENT}${COL_RESET}"
-        echo -n "Bump which version Major|mInor|Patch? [m/i/P]? "
-        read a
-        case $a in
-            M) BUMP=major;;
-            m) BUMP=major;;
-            I) BUMP=minor;;
-            i) BUMP=minor;;
-            P) BUMP=patch;;
-            p) BUMP=patch;;
-        esac
-    done
-
-    case $BUMP in
-        patch) PATCH_VERSION=$(($PATCH_VERSION + 1));;
-        minor) MINOR_VERSION=$(($MINOR_VERSION + 1)); PATCH_VERSION=0;;
-        major) MAJOR_VERSION=$(($MAJOR_VERSION + 1)); MINOR_VERSION=0; PATCH_VERSION=0;;
-    esac
-
-    RELEASE="${BRAND}_${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
-fi
+bumpUp $MAJOR_VERSION $MINOR_VERSION $PATCH_VERSION $BUMP
 
 # Quick sanity check
 if [ "$BRAND" != `basename $DRUPAL_LOCAL_ROOT` ]; then
