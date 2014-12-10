@@ -33,7 +33,7 @@ EOF
     exit 1
 fi
 
-while getopts "u:p:h:n:" options; do
+while getopts "u:p:h:n:m:" options; do
     case $options in
         u)  user="$OPTARG";;
         p)  pass="$OPTARG";;
