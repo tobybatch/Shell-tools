@@ -1,5 +1,5 @@
 function getRemotePath {
-    export RPATH=`ssh $RUSER@$RHOST realpath /var/www/testing`
+    export RPATH=`ssh $RUSER@$RHOST realpath $1`
     export CURRENT=`basename $RPATH`
 }
 
