@@ -129,6 +129,27 @@ function ntdr_createChangeLog {
     mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
 }
 
+function ntdr_createRemoteDB {
+    RUSER=$1
+    RHOST=$2
+    RPATH=$3
+    PASS=$4
+    RELEASE=$5
+
+    set +e
+    ssh $RUSER@$RHOST "mysql-checkuser -u ${RELEASE} -m ${PASS}"
+    RETVAL=$?
+    set -e
+    if [ "$RETVAL" != 0 ]; then
+        _DUMP_FILE=${RELEASE}-`date +"%y-%m-%d_%H-%M"`.sql
+        ntdr_debug "${COL_CYAN}User or DB ${RELEASE} exists, dumping it to ${_DUMP_FILE}${COL_RESET}"
+        ntdr_dumpRemoteDB $RUSER $RHOST $RPATH /var/tmp/$_DUMP_FILE
+    else
+        echo ssh $RUSER@$RHOST "mysql-create-user-and-db -u ${RELEASE} -p ${RELEASE} -m ${PASS}"
+        ssh $RUSER@$RHOST "mysql-create-user-and-db -u ${RELEASE} -p ${RELEASE} -m ${PASS}"
+    fi
+}
+
 function ntdr_createSettingFile {
     DRUPAL_LOCAL_ROOT=$1
     RELEASE=$2
