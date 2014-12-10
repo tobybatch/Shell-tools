@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# Release files to rc.foo.com and testing.foo.com
+# Fetch sql from rc.foo.com/latest
+# and load that sql into both new sites
+
+set -e
+
+source `dirname $0`/colours
+source `dirname $0`/ntdr.functions.sh
+
+NO_ARGS=0
+VERBOSE=off
+USAGE="$0 [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
+
+if [ $# -eq "$NO_ARGS" ]; then
+    echo $USAGE
+    exit 1
+fi
+
+# Set defaults
+DRUPAL_LOCAL_ROOT=`pwd`
+DRUPAL_REMOTE_ROOT=/var/www
+
+while getopts "r:l:b:f:m:vh" options; do
+    case $options in
+        v) VERBOSE='verbose';;
+        h) ntdr_usage; exit 0;;
+        r) DRUPAL_REMOTE_ROOT="$OPTARG";;
+        l) DRUPAL_LOCAL_ROOT="$OPTARG";;
+        b) BUMP="$OPTARG";;
+        f) RELEASE="$OPTARG";;
+        m) MYSQL_ROOT_PASSWORD="$OPTARG";;
+    esac
+done
+
+shift $((OPTIND-1))
+RUSER=`echo $1 | awk -F @ '{print $1}'`
+RHOST=`echo $1 | awk -F @ '{print $2}'`
+
+RC_HOST=rc.${RHOST}
+TEST_HOST=testing.${RHOST}
+
+LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
+RC_DIR=$DRUPAL_REMOTE_ROOT/rc
+TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
+
+echo "${COL_GREEN}Initial Settings${COL_RESET}"
+ntdr_debug "${COL_CYAN}DRUPAL_REMOTE_ROOT${COL_RESET} ${DRUPAL_REMOTE_ROOT}"
+ntdr_debug "${COL_CYAN}DRUPAL_LOCAL_ROOT${COL_RESET} ${DRUPAL_LOCAL_ROOT}"
+ntdr_debug "${COL_CYAN}BUMP${COL_RESET} ${BUMP}"
+ntdr_debug "${COL_CYAN}RELEASE${COL_RESET} ${RELEASE}"
+ntdr_debug "${COL_CYAN}MYSQL_ROOT_PASSWORD${COL_RESET} ${MYSQL_ROOT_PASSWORD}"
+ntdr_debug "${COL_CYAN}RUSER${COL_RESET} ${RUSER}"
+ntdr_debug "${COL_CYAN}RHOST${COL_RESET} ${RHOST}"
+ntdr_debug "${COL_CYAN}RC_HOST${COL_RESET} ${RC_HOST}"
+ntdr_debug "${COL_CYAN}TEST_HOST${COL_RESET} ${TEST_HOST}"
+ntdr_debug "${COL_CYAN}LATEST_DIR${COL_RESET} ${LATEST_DIR}"
+ntdr_debug "${COL_CYAN}RC_DIR${COL_RESET} ${RC_DIR}"
+ntdr_debug "${COL_CYAN}TESTING_DIR${COL_RESET} ${TESTING_DIR}"
+
+# Check remote folders exist
+echo -e "${COL_GREEN}Checking remote servers dirs${COL_RESET}"
+ntdr_checkRemoteDirExists $RUSER $RC_HOST $LATEST_DIR
+ntdr_checkRemoteDirExists $RUSER $RC_HOST $RC_DIR
+ntdr_checkRemoteDirExists $RUSER $TEST_HOST $TESTING_DIR
+
+CURRENT_LIVE_REAL_DIR=`ntdr_remotePath $RUSER $RC_HOST $LATEST_DIR`
+CURRENT_TEST_REAL_DIR=`ntdr_remotePath $RUSER $TEST_HOST $TESTING_DIR`
+CURRENT_LIVE_VERSION=`basename $CURRENT_LIVE_REAL_DIR`
+CURRENT_TEST_VERSION=`basename $CURRENT_TEST_REAL_DIR`
+ntdr_debug "${COL_CYAN}CURRENT_LIVE_REAL_DIR${COL_RESET} ${CURRENT_LIVE_REAL_DIR}"
+ntdr_debug "${COL_CYAN}CURRENT_TEST_REAL_DIR${COL_RESET} ${CURRENT_TEST_REAL_DIR}"
+ntdr_debug "${COL_CYAN}CURRENT_LIVE_VERSION${COL_RESET} ${CURRENT_LIVE_VERSION}"
+ntdr_debug "${COL_CYAN}CURRENT_TEST_VERSION${COL_RESET} ${CURRENT_TEST_VERSION}"
+
+mkdir -p ~/.nt_tabs
+# Get the database from latest
+echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
+DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
+ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
+ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$DUMP_FILE
+scp $RUSER@$RC_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
+
+# Get the database from testing
+echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
+DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
+ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
+ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$DUMP_FILE
+scp $RUSER@$TEST_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
+
+if [ -z "$RELEASE" ]; then
+    echo -e "${COL_GREEN}Computing version numbers from${COL_RESET} testing version  ${CURRENT_TEST_VERSION} (Live: ${CURRENT_LIVE_VERSION})"
+    # Get version numbers BRAND MAJOR_VERSION MINOR_VERSION PATCH_VERSION
+    ntdr_versionElements $CURRENT_TEST_VERSION
+    # this will create MAJOR_VERSION MINOR_VERSION PATCH_VERSION based on current test site version
+    ntdr_bumpUp $MAJOR_VERSION $MINOR_VERSION $PATCH_VERSION $BUMP
+    NEW_VERSION=${BRAND}_${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}
+else 
+    NEW_VERSION=$RELEASE
+fi
+ntdr_debug "${COL_CYAN}NEW_VERSION${COL_RESET} ${NEW_VERSION}"
+
+NEW_REMOTE_PATH=$DRUPAL_REMOTE_ROOT/${NEW_VERSION}
+
+echo -e "${COL_GREEN}Preparing to remote copy${COL_RESET}"
+echo -e "\t${RUSER}@${RC_HOST}:${CURRENT_LIVE_REAL_DIR} ${RUSER}@${RC_HOST}:${NEW_REMOTE_PATH}"
+echo -e "\t${RUSER}@${TEST_HOST}:${CURRENT_TEST_REAL_DIR} ${RUSER}@${TEST_HOST}:${NEW_REMOTE_PATH}"
+echo -e "${COL_GREEN}Then rsync${COL_RESET}"
+echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${RC_HOST}:${NEW_REMOTE_PATH}"
+echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${TEST_HOST}:${NEW_REMOTE_PATH}"
+echo -e "${COL_GREEN}Then create a database/user/password:${COL_RESET} ${NEW_VERSION}"
+echo -e "${COL_GREEN}The restore the DB from${COL_RESET} ${DUMP_FILE}"
+echo -e "${COL_MAGENTA}Proceed (y/N)?${COL_RESET}"
+
+read a
+if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
+    echo Aborting
+    exit 0
+fi
+
+echo -e "${COL_GREEN}Create new alias files${COL_RESET}"
+ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION $RC_HOST
+ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION $TEST_HOST
+
+echo -e "${COL_GREEN}Create changelog${COL_RESET}"
+ntdr_createChangeLog $DRUPAL_LOCAL_ROOT $NEW_VERSION
+
+echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
+ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
+
+echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
+ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
+
+echo -e "${COL_GREEN}Sync up${COL_RESET}"
+if [ ! -z "$VERBOSE" ]; then
+    PROGRESS="--progress"
+fi
+
+ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
+rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
+ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
+rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
+
+echo -e "${COL_GREEN}Over sync files${COL_RESET}"
+ssh $RUSER@$RC_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$TEST_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+
+echo -e "${COL_GREEN}Change settings files${COL_RESET}"
+ssh $RUSER@$RC_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$RC_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+ssh $RUSER@$RC_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+
+ssh $RUSER@$TEST_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$TEST_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+ssh $RUSER@$TEST_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+
+echo -e "${COL_GREEN}Create new DB if needed${COL_RESET}"
+ntdr_createRemoteDB $RUSER $RC_HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
+ntdr_createRemoteDB $RUSER $TEST_HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
+
+echo -e "${COL_GREEN}Fix perms${COL_RESET}"
+ssh $RUSER@$RC_HOST "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
+ssh $RUSER@$TEST_HOST "find ${NEW_REMOTE_PATH}/sites/default -type f -exec chmod 2664 {} \;"
+echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
+echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
+
+echo -e "${COL_GREEN}Upload db to both${COL_RESET}"
+drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${DUMP_FILE}
+drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${DUMP_FILE}
+
+echo -e "${COL_GREEN}Drush up${COL_RESET}"
+drush @${NEW_VERSION}.rc up
+drush @${NEW_VERSION}.testing up
+
+echo -e "${COL_GREEN}Drush updb${COL_RESET}"
+drush @${NEW_VERSION}.rc updb
+drush @${NEW_VERSION}.testing updb
+
+echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
+drush @${NEW_VERSION}.rc cc all
+drush @${NEW_VERSION}.testing cc all
+

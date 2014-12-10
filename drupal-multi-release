@@ -1,0 +1,37 @@
+#!/bin/bash
+
+USAGE="$0 user@host [user@host] ..."
+function usage {
+    echo $USAGE
+    cat <<EOF
+
+Does a drupal release to multiple destinations.
+
+For more options see drupal-release -h
+EOF
+}
+
+
+CMD=`dirname $0`/drupal-release
+
+while getopts "r:l:b:f:m:vh" options; do
+    case $options in
+        v) CMD="$CMD -v";;
+        h) usage; exit 0;;
+        r) CMD="$CMD -r $OPTARG";;
+        l) CMD="$CMD -l $OPTARG";;
+        b) CMD="$CMD -b $OPTARG";;
+        f) CMD="$CMD -f $OPTARG";;
+        m) CMD="$CMD -m $OPTARG";;
+    esac
+done
+
+shift $((OPTIND-1))
+for x in "$@"; do
+    RUSER=`echo $x | awk -F @ '{print $1}'`
+    RHOST=`echo $x | awk -F @ '{print $2}'`
+
+    $CMD $RUSER $RHOST
+done
+
+
