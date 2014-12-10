@@ -130,18 +130,35 @@ echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
 ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 
 echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR} ${NEW_REMOTE_PATH}
-ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR} ${NEW_REMOTE_PATH}
+ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Sync up${COL_RESET}"
+if [ ! -z "$VERBOSE" ]; then
+    PROGRESS="--progress"
+fi
+
 ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
-rsync -a ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
+rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
 ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
-rsync -a ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
+rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Over sync files${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
-ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$RC_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$TEST_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+
+echo -e "${COL_GREEN}Change settings files${COL_RESET}"
+ssh $RUSER@$RC_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$RC_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+ssh $RUSER@$RC_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+
+ssh $RUSER@$TEST_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$TEST_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+ssh $RUSER@$TEST_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+
+echo -e "${COL_GREEN}Create new DB if needed${COL_RESET}"
+ntdr_createRemoteDB $RUSER $RC_HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
+ntdr_createRemoteDB $RUSER $TEST_HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
 
 echo -e "${COL_GREEN}Fix perms${COL_RESET}"
 ssh $RUSER@$RC_HOST "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
