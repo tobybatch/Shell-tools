@@ -180,7 +180,7 @@ function ntdr_dumpRemoteDB {
     RHOST=$2
     RPATH=$3
     DUMPFILE=$4
-    ssh $RUSER@$RHOST "drush -r $RPATH sql-dump --ordered-dump > $DUMPFILE"
+    ssh $RUSER@$RHOST "drush -r $RPATH sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE"
 }
 
 function ntdr_remotePath {
