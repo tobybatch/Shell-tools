@@ -138,14 +138,16 @@ if [ ! -z "$VERBOSE" ]; then
     PROGRESS="--progress"
 fi
 
+ntdr_debug "Rsync down files"
+rsync -a $PROGRESS --exclude=tabs-imagecache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
+
 ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
 rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
 ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
 rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
 
-echo -e "${COL_GREEN}Over sync files${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
-ssh $RUSER@$TEST_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+echo -e "${COL_GREEN}Rsync down files${COL_RESET}"
+rsync -a $PROGRESS --exclude=tabs-imagecache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
 
 echo -e "${COL_GREEN}Change settings files${COL_RESET}"
 ssh $RUSER@$RC_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
