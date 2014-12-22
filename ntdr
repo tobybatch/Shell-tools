@@ -74,20 +74,8 @@ ntdr_debug "${COL_CYAN}CURRENT_TEST_REAL_DIR${COL_RESET} ${CURRENT_TEST_REAL_DIR
 ntdr_debug "${COL_CYAN}CURRENT_LIVE_VERSION${COL_RESET} ${CURRENT_LIVE_VERSION}"
 ntdr_debug "${COL_CYAN}CURRENT_TEST_VERSION${COL_RESET} ${CURRENT_TEST_VERSION}"
 
-mkdir -p ~/.nt_tabs
-# Get the database from latest
-echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
-DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
-ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$DUMP_FILE
-scp $RUSER@$RC_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
-
-# Get the database from testing
-echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
-DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
-ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$DUMP_FILE
-scp $RUSER@$TEST_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
+LIVE_DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
+TEST_DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
 
 if [ -z "$RELEASE" ]; then
     echo -e "${COL_GREEN}Computing version numbers from${COL_RESET} testing version  ${CURRENT_TEST_VERSION} (Live: ${CURRENT_LIVE_VERSION})"
@@ -110,7 +98,7 @@ echo -e "${COL_GREEN}Then rsync${COL_RESET}"
 echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${RC_HOST}:${NEW_REMOTE_PATH}"
 echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${TEST_HOST}:${NEW_REMOTE_PATH}"
 echo -e "${COL_GREEN}Then create a database/user/password:${COL_RESET} ${NEW_VERSION}"
-echo -e "${COL_GREEN}The restore the DB from${COL_RESET} ${DUMP_FILE}"
+echo -e "${COL_GREEN}The restore the DB from${COL_RESET} ${LIVE_DUMP_FILE}"
 echo -e "${COL_MAGENTA}Proceed (y/N)?${COL_RESET}"
 
 read a
@@ -118,6 +106,19 @@ if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
     echo Aborting
     exit 0
 fi
+
+mkdir -p ~/.nt_tabs
+# Get the database from latest
+echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
+ntdr_debug "${COL_CYAN}Dump file $LIVE_DUMP_FILE${COL_RESET}"
+ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$LIVE_DUMP_FILE
+scp $RUSER@$RC_HOST:/var/tmp/$LIVE_DUMP_FILE ~/.nt_tabs/$LIVE_DUMP_FILE
+
+# Get the database from testing
+echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
+ntdr_debug "${COL_CYAN}Dump file $TEST_DUMP_FILE${COL_RESET}"
+ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$TEST_DUMP_FILE
+scp $RUSER@$TEST_HOST:/var/tmp/$TEST_DUMP_FILE ~/.nt_tabs/$TEST_DUMP_FILE
 
 echo -e "${COL_GREEN}Create new alias files${COL_RESET}"
 ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION $RC_HOST
@@ -169,8 +170,8 @@ echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you ma
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
 
 echo -e "${COL_GREEN}Upload db to both${COL_RESET}"
-drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${DUMP_FILE}
-drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${DUMP_FILE}
+drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
+drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
 
 echo -e "${COL_GREEN}Drush up${COL_RESET}"
 drush @${NEW_VERSION}.rc up
