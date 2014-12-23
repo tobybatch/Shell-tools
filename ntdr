@@ -34,6 +34,9 @@ while getopts "r:l:b:f:m:vh" options; do
     esac
 done
 
+# Export this so sub-functions can see it
+export VERBOSE
+
 shift $((OPTIND-1))
 RUSER=`echo $1 | awk -F @ '{print $1}'`
 RHOST=`echo $1 | awk -F @ '{print $2}'`
@@ -45,7 +48,7 @@ LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
 RC_DIR=$DRUPAL_REMOTE_ROOT/rc
 TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
 
-echo "${COL_GREEN}Initial Settings${COL_RESET}"
+echo -e "${COL_GREEN}Initial Settings${COL_RESET}"
 ntdr_debug "${COL_CYAN}DRUPAL_REMOTE_ROOT${COL_RESET} ${DRUPAL_REMOTE_ROOT}"
 ntdr_debug "${COL_CYAN}DRUPAL_LOCAL_ROOT${COL_RESET} ${DRUPAL_LOCAL_ROOT}"
 ntdr_debug "${COL_CYAN}BUMP${COL_RESET} ${BUMP}"

@@ -18,7 +18,6 @@ function ntdr_bumpUp {
     BUMP=$4
 
     until [ "$BUMP" == "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
-        echo -e "Current version on remote site: ${COL_GREEN}${CURRENT}${COL_RESET}"
         echo -n "Bump which version Major|mInor|Patch? [m/i/P]? "
         read a
         case $a in
