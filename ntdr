@@ -140,7 +140,7 @@ if [ ! -z "$VERBOSE" ]; then
 fi
 
 ntdr_debug "Rsync down files"
-rsync -a $PROGRESS --no-p -O --exclude=tabs-imagecache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
+rsync -a $PROGRESS --no-p -O --exclude=tabs-imagecache --exclude=.sass-cache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
 
 ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
 rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
