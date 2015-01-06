@@ -59,12 +59,6 @@ GITCMD="git -C $GIT"
 NEWCHANGELOG=$ROOTPATH/newchangelog.txt
 OLDCHANGELOG=$ROOTPATH/changelog.txt
 
-echo $NEW_TAG > $NEWCHANGELOG
-echo "======" >> $NEWCHANGELOG
-$GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
-
-# Preview the changes
-less $NEWCHANGELOG
 # find latest tag
 if [ -z "$OLDBRANCH" ]; then
     CUR_TAG=`$GITCMD describe --abbrev=0 --tags`
@@ -72,6 +66,12 @@ else
     CUR_TAG=$OLDBRANCH
 fi
 
+echo $NEW_TAG > $NEWCHANGELOG
+echo "======" >> $NEWCHANGELOG
+$GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
+
+# Preview the changes
+less $NEWCHANGELOG
 if [ -z "$NEWBRANCH" ]; then
     getVersionElements $CUR_TAG
     bumpUp ${MAJOR_VERSION} ${MINOR_VERSION} ${PATCH_VERSION} ${BUMP}
