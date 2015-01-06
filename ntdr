@@ -137,8 +137,8 @@ echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
 ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 
 echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
-ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$RC_HOST rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$TEST_HOST rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Sync up${COL_RESET}"
 if [ ! -z "$VERBOSE" ]; then
