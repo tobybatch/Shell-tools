@@ -175,6 +175,10 @@ ssh $RUSER@$TEST_HOST "find ${NEW_REMOTE_PATH}/sites/default -type f -exec chmod
 echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
 
+echo -e "${COL_GREEN}Preserve robots.txt${COL_RESET}"
+cp ${NEW_REMOTE_PATH}/robots.txt ${NEW_REMOTE_PATH}/robots.${NEW_VERSION}.txt
+cp ${CURRENT_LIVE_REAL_DIR}/robots.txt ${NEW_REMOTE_PATH}/robots.txt
+
 echo -e "${COL_GREEN}Upload db to both${COL_RESET}"
 drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
 drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
