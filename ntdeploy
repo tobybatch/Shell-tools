@@ -1,0 +1,98 @@
+#!/bin/bash
+
+set -e
+source `dirname $0`/colours
+source `dirname $0`/ntdr.functions.sh
+
+NO_ARGS=0
+VERBOSE=off
+USAGE="$0 [-y] [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [-f release] [-m mysql-root-pass] -b brandcode remoteuser@remotehost"
+
+if [ "$#" -eq "$NO_ARGS" ]; then
+    echo $USAGE
+    exit 1
+fi
+
+# Set defaults
+DRUPAL_LOCAL_ROOT=`pwd`
+DRUPAL_REMOTE_ROOT=/var/www
+
+while getopts "yr:l:b:f:m:b:vh" options; do
+    case $options in
+        y) YES="-y";;
+        v) VERBOSE='verbose';;
+        h) echo $USAGE; exit 0;;
+        r) DRUPAL_REMOTE_ROOT="$OPTARG";;
+        l) DRUPAL_LOCAL_ROOT="$OPTARG";;
+        f) RELEASE="$OPTARG";;
+        b) BC="$OPTARG";;
+        m) MYSQL_ROOT_PASSWORD="$OPTARG";;
+    esac
+done
+
+# Export this so sub-functions can see it
+export VERBOSE
+
+shift $((OPTIND-1))
+RUSER=`echo $1 | awk -F @ '{print $1}'`
+RHOST=`echo $1 | awk -F @ '{print $2}'`
+
+if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+    echo -e $COL_RED"No root password, cannot proceed"$COL_RESET
+    echo $USAGE
+    exit 1;
+fi
+
+if [ -z "$BC" ]; then
+    echo -e $COL_RED"No brand code, cannot proceed"$COL_RESET
+    echo $USAGE
+    exit 1;
+fi
+
+if [ ! -z "$VERBOSE" ]; then
+    PROGRESS="--progress"
+fi
+
+if [ -z "$RELEASE" ]; then
+    RELEASE=${BC}_0.0.1
+fi
+
+# Check remote folder exist
+echo -e "${COL_GREEN}Checking remote servers dirs${COL_RESET}"
+ntdr_checkRemoteDirExists $RUSER $RHOST $DRUPAL_REMOTE_ROOT
+
+NEW_VERSION=$RELEASE
+NEW_REMOTE_PATH=$DRUPAL_REMOTE_ROOT/$RELEASE
+
+echo -e "${COL_GREEN}Creating new files${COL_RESET}"
+ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION ${RHOST}
+ntdr_createChangeLog $DRUPAL_LOCAL_ROOT $NEW_VERSION
+ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
+
+echo -e "${COL_GREEN}Creating new robots.txt${COL_RESET}"
+cp $DRUPAL_LOCAL_ROOT/robots.txt $DRUPAL_LOCAL_ROOT/robots.bak
+cat > $DRUPAL_LOCAL_ROOT/robots.txt <<EOF
+User-agent: *
+Disallow: /
+EOF
+
+echo -e "${COL_GREEN}Copying files${COL_RESET}"
+rsync -a $PROGRESS --no-p -O --no-g --exclude=".git" --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RHOST:${NEW_REMOTE_PATH}
+scp ${DRUPAL_LOCAL_ROOT}/.htaccess $RUSER@$RHOST:${NEW_REMOTE_PATH}
+ssh $RUSER@$RHOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+ssh $RUSER@$RHOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+ssh $RUSER@$RHOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+
+echo -e "${COL_GREEN}Creating databse${COL_RESET}"
+ntdr_createRemoteDB $RUSER $RHOST $NEW_REMOTE_PATH $MYSQL_ROOT_PASSWORD $NEW_VERSION
+ssh $RUSER@$RHOST "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
+echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
+echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
+
+DUMPFILE=/var/tmp/${NEW_VERSION}.sql
+drush sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE
+ssh $RUSER@$RHOST drush -r ${NEW_REMOTE_PATH} sqlc < $DUMPFILE
+
+mv $DRUPAL_LOCAL_ROOT/robots.bak $DRUPAL_LOCAL_ROOT/robots.txt
+
+echo -e "${COL_GREEN}All done.${COL_RESET}"

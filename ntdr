@@ -6,8 +6,9 @@
 
 set -e
 
-source `dirname $0`/colours
-source `dirname $0`/ntdr.functions.sh
+CWD=`dirname $0`
+source $CWD/colours
+source $CWD/ntdr.functions.sh
 
 NO_ARGS=0
 VERBOSE=off
