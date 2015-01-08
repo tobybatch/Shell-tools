@@ -95,4 +95,8 @@ ssh $RUSER@$RHOST drush -r ${NEW_REMOTE_PATH} sqlc < $DUMPFILE
 
 mv $DRUPAL_LOCAL_ROOT/robots.bak $DRUPAL_LOCAL_ROOT/robots.txt
 
+echo -e "${COL_GREEN}Creating symlinks${COL_RESET}"
+ssh $RUSER@$RHOST "ln -s ${NEW_REMOTE_PATH} $DRUPAL_REMOTE_ROOT/rc"
+ssh $RUSER@$RHOST "ln -s ${NEW_REMOTE_PATH} $DRUPAL_REMOTE_ROOT/latest"
+
 echo -e "${COL_GREEN}All done.${COL_RESET}"

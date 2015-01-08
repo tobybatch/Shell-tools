@@ -195,3 +195,8 @@ ssh $RUSER@$RC_HOST cp /var/www/testing/robots.txt ${NEW_REMOTE_PATH}/robots.txt
 echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
+
+echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
+ssh $RUSER@$RC_HOST "rm ${DRUPAL_REMOTE_ROOT}/{rc,testing}"
+ssh $RUSER@$RC_HOST "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/rc"
+ssh $RUSER@$RC_HOST "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
