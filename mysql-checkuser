@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NO_ARGS=0
-USAGE="`basename $0` -u username [-p password] [-h hostname] [-n dbname]"
+USAGE="`basename $0` -u username [-p password] [-h hostname] [-n dbname] [-m root-pw]"
 
 ESC_SEQ="\x1b["
 COL_RESET=$ESC_SEQ"39;49;00m"
@@ -33,12 +33,13 @@ EOF
     exit 1
 fi
 
-while getopts "u:p:h:n:" options; do
+while getopts "u:p:h:n:m:" options; do
     case $options in
         u)  user="$OPTARG";;
         p)  pass="$OPTARG";;
         h)  host="$OPTARG";;
         n)  name="$OPTARG";;
+        m)  MYSQL_ROOT_PASSWORD="$OPTARG";;
     esac
 done
 

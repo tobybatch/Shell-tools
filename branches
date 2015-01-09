@@ -2,18 +2,9 @@
 
 NO_ARGS=0
 USAGE="`basename $0` [-f] [-l] [-p] [-b branch] path/to/drupal"
+EXITSTATE=0
 
-while getopts "b:lpf" options; do
-    case $options in
-        b) newbranch="$OPTARG";;
-        l) latesttag=1;;
-        p) plainoutput=1;;
-        f) fetchorigin=1;;
-    esac
-done
-
-if [ $# -eq "$NO_ARGS" ]  # Script invoked with no command-line args?
-then
+function usage {
     echo $USAGE
     cat <<EOF
 Search the file system down from the specified path looking for git repos.
@@ -31,8 +22,19 @@ Optional a new named branch can be created and checkout out/pulled.
     If specified and the remote branch exists then a the branch is checked out
     and pulled. Existing changes will be stashed, and then applied.
 EOF
-    exit 1
-fi
+}
+
+while getopts "b:lpf" options; do
+    case $options in
+        b) newbranch="$OPTARG";;
+        l) latesttag=1;;
+        p) plainoutput=1;;
+        f) fetchorigin=1;;
+        h) usage; exit;;
+    esac
+done
+
+shift $((OPTIND-1))
 
 if [ -z "$plainoutput" ]; then
     ESC_SEQ="\x1b["
@@ -45,51 +47,59 @@ if [ -z "$plainoutput" ]; then
     COL_CYAN=$ESC_SEQ"36;01m"
 fi
 
-EXPLAIN_NEEDED=0
-
 if [ ! -z "$latesttag" ]; then
     printf "${COL_GREEN}%-25s %-20s %-10s %s${COL_RESET}\n" Name Branch Tag Path
 else
     printf "${COL_GREEN}%-25s %-20s %s${COL_RESET}\n" Name Branch Path
 fi
 
-for var in "$@"; do
+EXITSTATE=0
+if [ ! -z "$@" ]; then
+    ROOTPATH=$@
+else
+    ROOTPATH=`pwd`
+fi
+
+for var in "$ROOTPATH"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
+            GITCMD="git -C `dirname $x`"
             # Fetch latest
             if [ ! -z "$fetchorigin" ]; then
-                git --git-dir=$x fetch origin > /dev/null
+                $GITCMD fetch origin > /dev/null
             fi
             dir=`dirname $x`
             name=`basename $dir`
-            branch=`git --git-dir=$x branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
+            if [ "$name" == "tabs-api-client" ]; then
+                continue
+            fi
+            branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
             if [ ! -z "$latesttag" ]; then
-                lt=`git --git-dir=$x describe --abbrev=0 --tags`
-                diff=`git --git-dir=$x diff refs/heads/${branch}..refs/tags/${lt}`
+                lt=`$GITCMD describe --abbrev=0 --tags 2> /dev/null`
+                diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt} 2> /dev/null`
                 if [ ! -z "$diff" ]; then
-                    printf "%-25s %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
-                    EXPLAIN_NEEDED=1
+                    printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                    if [ "$name" != "tabs-api-client" ]; then
+                        EXITSTATE=$(($EXITSTATE + 1))
+                    fi
                 else
-                    printf "%-25s %-20s %-10s %s\n" $name $branch $lt $dir
+                    printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
                 fi
             else
-                printf "%-25s %-20s %s\n" $name $branch $dir
+                printf "\n%-25s %-20s %s\n" $name $branch $dir
             fi
             if [ ! -z "$newbranch" ]; then
-                git --git-dir=$x stash
-                git --git-dir=$x fetch origin
-                git --git-dir=$x show-branch $newbranch > /dev/null
+                # The --git-dir doesn't work in this case
+                $GITCMD stash
+                $GITCMD fetch origin --tags
+                $GITCMD show-branch $newbranch > /dev/null
                 if [ "$?" == 0 ]; then
-                    git --git-dir=$x checkout $newbranch
-                    git --git-dir=$x pull origin $newbranch
+                    $GITCMD checkout $newbranch
+                    $GITCMD pull origin $newbranch
                 fi
             fi
         done
     fi
 done
 
-#if [ "$EXPLAIN_NEEDED" == "1" ]; then
-#    echo
-#    echo -e "${COL_CYAN}The branches items in red indicated that the code has changed between the tag${COL_RESET}"
-#    echo -e "${COL_CYAN}and current local file state.${COL_RESET}"
-#fi
+exit $EXITSTATE
