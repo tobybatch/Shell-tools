@@ -1,21 +1,67 @@
 #!/bin/bash
 
+set -e
+set -x
 CWD=`dirname $0`
 source $CWD/colours
 source $CWD/ntdr.functions.sh
 
 NO_ARGS=0
 VERBOSE=off
-USAGE="$0 [-y] [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
+USAGE="$0 [-y] [-v] [-h] [-r remote-drupal-root] remoteuser@remotehost"
 
+if [ $# -eq "$NO_ARGS" ]; then
+    echo $USAGE
+    exit 1
+fi
 
-# (warn) and bump users
-# $items = db_query_range('SELECT u.uid, u.name, MAX(s.timestamp) AS max_timestamp FROM {users} u INNER JOIN {sessions} s ON u.uid = s.uid WHERE s.timestamp >= :interval AND s.uid > 0 GROUP BY u.uid, u.name ORDER BY max_timestamp DESC', 0, $max_users, array(':interval' => $interval))->fetchAll();
-# lock site
+DRUPAL_REMOTE_ROOT=/var/www
 
-# pull db
-# pull files
-# robots
-# swap symlinks
-# test lite
-# unlock site
+while getopts "yr:l:b:f:m:vh" options; do
+    case $options in
+        y) YES="-y";;
+        v) VERBOSE='verbose';;
+        h) ntsl_usage; exit 0;;
+        r) DRUPAL_REMOTE_ROOT="$OPTARG";;
+    esac
+done
+
+# Export this so sub-functions can see it
+export VERBOSE
+
+shift $((OPTIND-1))
+RUSER=`echo $1 | awk -F @ '{print $1}'`
+RHOST=`echo $1 | awk -F @ '{print $2}'`
+
+RC_HOST=rc.${RHOST}
+TEST_HOST=testing.${RHOST}
+
+LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
+TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
+
+for SITE in $RC_HOST $TEST_HOST; do
+    # lock site
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset maintenance_mode 1"
+
+    # pull db
+    DUMPFILE=/var/tmp/latest-`date +"%y-%m-%d_%H-%M"`.sql
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE"
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing sqlc < $DUMPFILE"
+
+    # pull files
+    ssh $RUSER@$SITE "rsync -a $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
+
+    # robots
+    ssh $RUSER@$SITE "cp $DRUPAL_REMOTE_ROOT/latest/robots.txt $DRUPAL_REMOTE_ROOT/testing/robots.txt"
+
+    # unlock new site
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing cc all"
+
+    # swap symlinks
+    NEW_SITE=`ssh $RUSER@$SITE "ls -d --dereference /var/www/testing"`
+    ssh $RUSER@$SITE "rm /var/www/latest && ln -s $NEW_SITE /var/www/latest"
+    ssh $RUSER@$SITE "rm /var/www/testing && ln -s testing /var/www/testingdir"
+done
+set +e
+set +x

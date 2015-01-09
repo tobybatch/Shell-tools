@@ -231,6 +231,35 @@ Optional Parameters
 EOF
 }
 
+function ntsl_usage {
+    echo $USAGE
+    cat <<EOF
+
+Send the site live.  It will:
+  * Put the site into maintenance mode
+  * Dump the live DB on the server
+  * rysnc files folder form latest over test
+  * Overwrite the testing db with the live db
+  * Copy the latest robots.txt into testing
+  * Unlock the test site
+  * Swap the sym links
+
+The 'live' site is the latest sym link and thetesting site is the testing
+symlink
+
+Optional Parameters
+-------------------
+-v
+  Be verbose
+-h
+  Print this message
+-r remote-drupal-root
+  The path to the root of the dir holding the remote drupal root. This is the
+  folder that will checked for the latest|testing|rc symlinks. Defualts to
+  /var/www
+EOF
+}
+
 function ntdr_versionElements {
     export BRAND=`echo $1|awk '{split($0,a,"_"); print a[1]}'`
     export NOBC=`echo $1|awk '{split($0,a,"_"); print a[2]}'`

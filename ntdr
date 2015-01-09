@@ -85,7 +85,11 @@ TEST_DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
 if [ -z "$RELEASE" ]; then
     echo -e "${COL_GREEN}Computing version numbers from${COL_RESET} testing version  ${CURRENT_TEST_VERSION} (Live: ${CURRENT_LIVE_VERSION})"
     # Get version numbers BRAND MAJOR_VERSION MINOR_VERSION PATCH_VERSION
-    ntdr_versionElements $CURRENT_TEST_VERSION
+    if [ "$CURRENT_TEST_VERSION" == 'testingdir' ]; then
+        ntdr_versionElements $CURRENT_LIVE_VERSION
+    else
+        ntdr_versionElements $CURRENT_TEST_VERSION
+    fi
     # this will create MAJOR_VERSION MINOR_VERSION PATCH_VERSION based on current test site version
     ntdr_bumpUp $MAJOR_VERSION $MINOR_VERSION $PATCH_VERSION $BUMP
     NEW_VERSION=${BRAND}_${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}
@@ -120,12 +124,6 @@ echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
 ntdr_debug "${COL_CYAN}Dump file $LIVE_DUMP_FILE${COL_RESET}"
 ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$LIVE_DUMP_FILE
 scp $RUSER@$RC_HOST:/var/tmp/$LIVE_DUMP_FILE ~/.nt_tabs/$LIVE_DUMP_FILE
-
-# Get the database from testing
-echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
-ntdr_debug "${COL_CYAN}Dump file $TEST_DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$TEST_DUMP_FILE
-scp $RUSER@$TEST_HOST:/var/tmp/$TEST_DUMP_FILE ~/.nt_tabs/$TEST_DUMP_FILE
 
 echo -e "${COL_GREEN}Create new alias files${COL_RESET}"
 ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION $RC_HOST
@@ -189,14 +187,20 @@ drush @${NEW_VERSION}.rc $YES updb
 drush @${NEW_VERSION}.testing $YES updb
 
 echo -e "${COL_GREEN}Preserve robots.txt${COL_RESET}"
+set +e
 ssh $RUSER@$RC_HOST cp ${NEW_REMOTE_PATH}/robots.txt ${NEW_REMOTE_PATH}/robots.${NEW_VERSION}.txt
 ssh $RUSER@$RC_HOST cp /var/www/testing/robots.txt ${NEW_REMOTE_PATH}/robots.txt
+ssh $RUSER@$TEST_HOST cp ${NEW_REMOTE_PATH}/robots.txt ${NEW_REMOTE_PATH}/robots.${NEW_VERSION}.txt
+ssh $RUSER@$TEST_HOST cp /var/www/testing/robots.txt ${NEW_REMOTE_PATH}/robots.txt
+set -e
 
 echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
 
 echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
-ssh $RUSER@$RC_HOST "rm ${DRUPAL_REMOTE_ROOT}/{rc,testing}"
-ssh $RUSER@$RC_HOST "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/rc"
-ssh $RUSER@$RC_HOST "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+for SITE in $RC_HOST $TEST_HOST; do
+    ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/{rc,testing}"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/rc"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+done

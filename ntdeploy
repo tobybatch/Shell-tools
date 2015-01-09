@@ -84,7 +84,8 @@ ssh $RUSER@$RHOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.ph
 ssh $RUSER@$RHOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
 
 echo -e "${COL_GREEN}Creating databse${COL_RESET}"
-ntdr_createRemoteDB $RUSER $RHOST $NEW_REMOTE_PATH $MYSQL_ROOT_PASSWORD $NEW_VERSION
+ssh $RUSER@$RHOST "mysql-create-user-and-db -u ${RELEASE} -p ${RELEASE} -m ${MYSQL_ROOT_PASSWORD}"
+
 ssh $RUSER@$RHOST "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
 echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
@@ -96,7 +97,13 @@ ssh $RUSER@$RHOST drush -r ${NEW_REMOTE_PATH} sqlc < $DUMPFILE
 mv $DRUPAL_LOCAL_ROOT/robots.bak $DRUPAL_LOCAL_ROOT/robots.txt
 
 echo -e "${COL_GREEN}Creating symlinks${COL_RESET}"
-ssh $RUSER@$RHOST "ln -s ${NEW_REMOTE_PATH} $DRUPAL_REMOTE_ROOT/rc"
+set +e
+ssh $RUSER@$RHOST "rm $DRUPAL_REMOTE_ROOT/rc"
+ssh $RUSER@$RHOST "rm $DRUPAL_REMOTE_ROOT/latest"
+ssh $RUSER@$RHOST "rm $DRUPAL_REMOTE_ROOT/testing"
+set -e
+ssh $RUSER@$RHOST "ln -s ${DRUPAL_REMOTE_ROOT}/testingdir $DRUPAL_REMOTE_ROOT/testing"
+ssh $RUSER@$RHOST "ln -s ${DRUPAL_REMOTE_ROOT}/testing $DRUPAL_REMOTE_ROOT/rc"
 ssh $RUSER@$RHOST "ln -s ${NEW_REMOTE_PATH} $DRUPAL_REMOTE_ROOT/latest"
 
 echo -e "${COL_GREEN}All done.${COL_RESET}"
