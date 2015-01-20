@@ -56,6 +56,9 @@ fi
 echo "Git found at $x, git folder set to $GIT"
 GITCMD="git -C $GIT"
 
+NEWCHANGELOG=$ROOTPATH/newchangelog.txt
+OLDCHANGELOG=$ROOTPATH/changelog.txt
+
 # find latest tag
 if [ -z "$OLDBRANCH" ]; then
     CUR_TAG=`$GITCMD describe --abbrev=0 --tags`
@@ -63,8 +66,12 @@ else
     CUR_TAG=$OLDBRANCH
 fi
 
-echo CUR_TAG $CUR_TAG
+echo $NEW_TAG > $NEWCHANGELOG
+echo "======" >> $NEWCHANGELOG
+$GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
 
+# Preview the changes
+less $NEWCHANGELOG
 if [ -z "$NEWBRANCH" ]; then
     getVersionElements $CUR_TAG
     bumpUp ${MAJOR_VERSION} ${MINOR_VERSION} ${PATCH_VERSION} ${BUMP}
@@ -73,17 +80,9 @@ else
     NEW_TAG=$NEWBRANCH
 fi
 
-echo NEW_TAG $NEW_TAG
+echo Current Tag: $CUR_TAG
+echo New Tag: $NEW_TAG
 
-NEWCHANGELOG=$ROOTPATH/newchangelog.txt
-OLDCHANGELOG=$ROOTPATH/changelog.txt
-
-echo $NEW_TAG > $NEWCHANGELOG
-echo "======" >> $NEWCHANGELOG
-$GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
-
-# Preview the changes
-less $NEWCHANGELOG
 echo "Proceed (Y/n)"
 a=0
 until [ "$a" == "y" ] || [ "$a" == "n" ]; do

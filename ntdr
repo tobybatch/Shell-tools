@@ -6,12 +6,13 @@
 
 set -e
 
-source `dirname $0`/colours
-source `dirname $0`/ntdr.functions.sh
+CWD=`dirname $0`
+source $CWD/colours
+source $CWD/ntdr.functions.sh
 
 NO_ARGS=0
 VERBOSE=off
-USAGE="$0 [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
+USAGE="$0 [-y] [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
 
 if [ $# -eq "$NO_ARGS" ]; then
     echo $USAGE
@@ -22,8 +23,9 @@ fi
 DRUPAL_LOCAL_ROOT=`pwd`
 DRUPAL_REMOTE_ROOT=/var/www
 
-while getopts "r:l:b:f:m:vh" options; do
+while getopts "yr:l:b:f:m:vh" options; do
     case $options in
+        y) YES="-y";;
         v) VERBOSE='verbose';;
         h) ntdr_usage; exit 0;;
         r) DRUPAL_REMOTE_ROOT="$OPTARG";;
@@ -33,6 +35,9 @@ while getopts "r:l:b:f:m:vh" options; do
         m) MYSQL_ROOT_PASSWORD="$OPTARG";;
     esac
 done
+
+# Export this so sub-functions can see it
+export VERBOSE
 
 shift $((OPTIND-1))
 RUSER=`echo $1 | awk -F @ '{print $1}'`
@@ -45,7 +50,7 @@ LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
 RC_DIR=$DRUPAL_REMOTE_ROOT/rc
 TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
 
-echo "${COL_GREEN}Initial Settings${COL_RESET}"
+echo -e "${COL_GREEN}Initial Settings${COL_RESET}"
 ntdr_debug "${COL_CYAN}DRUPAL_REMOTE_ROOT${COL_RESET} ${DRUPAL_REMOTE_ROOT}"
 ntdr_debug "${COL_CYAN}DRUPAL_LOCAL_ROOT${COL_RESET} ${DRUPAL_LOCAL_ROOT}"
 ntdr_debug "${COL_CYAN}BUMP${COL_RESET} ${BUMP}"
@@ -74,25 +79,17 @@ ntdr_debug "${COL_CYAN}CURRENT_TEST_REAL_DIR${COL_RESET} ${CURRENT_TEST_REAL_DIR
 ntdr_debug "${COL_CYAN}CURRENT_LIVE_VERSION${COL_RESET} ${CURRENT_LIVE_VERSION}"
 ntdr_debug "${COL_CYAN}CURRENT_TEST_VERSION${COL_RESET} ${CURRENT_TEST_VERSION}"
 
-mkdir -p ~/.nt_tabs
-# Get the database from latest
-echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
-DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
-ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$DUMP_FILE
-scp $RUSER@$RC_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
-
-# Get the database from testing
-echo -e "${COL_GREEN}Fetching testing DB${COL_RESET}"
-DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
-ntdr_debug "${COL_CYAN}Dump file $DUMP_FILE${COL_RESET}"
-ntdr_dumpRemoteDB $RUSER $TEST_HOST $TESTING_DIR /var/tmp/$DUMP_FILE
-scp $RUSER@$TEST_HOST:/var/tmp/$DUMP_FILE ~/.nt_tabs/$DUMP_FILE
+LIVE_DUMP_FILE=$CURRENT_LIVE_VERSION-live-`date +"%y-%m-%d_%H-%M"`.sql
+TEST_DUMP_FILE=$CURRENT_TEST_VERSION-testing-`date +"%y-%m-%d_%H-%M"`.sql
 
 if [ -z "$RELEASE" ]; then
     echo -e "${COL_GREEN}Computing version numbers from${COL_RESET} testing version  ${CURRENT_TEST_VERSION} (Live: ${CURRENT_LIVE_VERSION})"
     # Get version numbers BRAND MAJOR_VERSION MINOR_VERSION PATCH_VERSION
-    ntdr_versionElements $CURRENT_TEST_VERSION
+    if [ "$CURRENT_TEST_VERSION" == 'testingdir' ]; then
+        ntdr_versionElements $CURRENT_LIVE_VERSION
+    else
+        ntdr_versionElements $CURRENT_TEST_VERSION
+    fi
     # this will create MAJOR_VERSION MINOR_VERSION PATCH_VERSION based on current test site version
     ntdr_bumpUp $MAJOR_VERSION $MINOR_VERSION $PATCH_VERSION $BUMP
     NEW_VERSION=${BRAND}_${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}
@@ -110,14 +107,23 @@ echo -e "${COL_GREEN}Then rsync${COL_RESET}"
 echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${RC_HOST}:${NEW_REMOTE_PATH}"
 echo -e "\t${DRUPAL_LOCAL_ROOT}/* to ${RUSER}@${TEST_HOST}:${NEW_REMOTE_PATH}"
 echo -e "${COL_GREEN}Then create a database/user/password:${COL_RESET} ${NEW_VERSION}"
-echo -e "${COL_GREEN}The restore the DB from${COL_RESET} ${DUMP_FILE}"
+echo -e "${COL_GREEN}The restore the DB from${COL_RESET} ${LIVE_DUMP_FILE}"
 echo -e "${COL_MAGENTA}Proceed (y/N)?${COL_RESET}"
 
-read a
-if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
-    echo Aborting
-    exit 0
+if [ -z "$YES" ]; then
+    read a
+    if [ "$a" != 'y' ] && [ "$a" != 'Y' ]; then
+        echo Aborting
+        exit 0
+    fi
 fi
+
+mkdir -p ~/.nt_tabs
+# Get the database from latest
+echo -e "${COL_GREEN}Fetching live DB${COL_RESET}"
+ntdr_debug "${COL_CYAN}Dump file $LIVE_DUMP_FILE${COL_RESET}"
+ntdr_dumpRemoteDB $RUSER $RC_HOST $LATEST_DIR /var/tmp/$LIVE_DUMP_FILE
+scp $RUSER@$RC_HOST:/var/tmp/$LIVE_DUMP_FILE ~/.nt_tabs/$LIVE_DUMP_FILE
 
 echo -e "${COL_GREEN}Create new alias files${COL_RESET}"
 ntdr_createAlias $DRUPAL_LOCAL_ROOT $NEW_VERSION $RC_HOST
@@ -130,22 +136,24 @@ echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
 ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 
 echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
-ssh $RUSER@$TEST_HOST rsync -a ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$RC_HOST rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
+ssh $RUSER@$TEST_HOST rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
 
 echo -e "${COL_GREEN}Sync up${COL_RESET}"
 if [ ! -z "$VERBOSE" ]; then
     PROGRESS="--progress"
 fi
 
-ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
-rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
-ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
-rsync -a $PROGRESS --exclude=tabs-imagecache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
+ntdr_debug "Rsync down files"
+rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
 
-echo -e "${COL_GREEN}Over sync files${COL_RESET}"
-ssh $RUSER@$RC_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
-ssh $RUSER@$TEST_HOST rsync -a $PROGRESS --exclude=tabs-imagecache ${CURRENT_LIVE_REAL_DIR}/sites/default/files ${NEW_REMOTE_PATH}/sites/default
+ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
+rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$RC_HOST:${NEW_REMOTE_PATH}
+ntdr_debug "Syncing to $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}"
+rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/* $RUSER@$TEST_HOST:${NEW_REMOTE_PATH}
+
+echo -e "${COL_GREEN}Rsync up files${COL_RESET}"
+rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/sites/default/files $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default
 
 echo -e "${COL_GREEN}Change settings files${COL_RESET}"
 ssh $RUSER@$RC_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
@@ -167,18 +175,32 @@ echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you ma
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
 
 echo -e "${COL_GREEN}Upload db to both${COL_RESET}"
-drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${DUMP_FILE}
-drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${DUMP_FILE}
+drush @${NEW_VERSION}.rc sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
+drush @${NEW_VERSION}.testing sqlc < ~/.nt_tabs/${LIVE_DUMP_FILE}
 
 echo -e "${COL_GREEN}Drush up${COL_RESET}"
-drush @${NEW_VERSION}.rc up
-drush @${NEW_VERSION}.testing up
+drush @${NEW_VERSION}.rc $YES up
+drush @${NEW_VERSION}.testing $YES up
 
 echo -e "${COL_GREEN}Drush updb${COL_RESET}"
-drush @${NEW_VERSION}.rc updb
-drush @${NEW_VERSION}.testing updb
+drush @${NEW_VERSION}.rc $YES updb
+drush @${NEW_VERSION}.testing $YES updb
+
+echo -e "${COL_GREEN}Preserve robots.txt${COL_RESET}"
+set +e
+ssh $RUSER@$RC_HOST cp ${NEW_REMOTE_PATH}/robots.txt ${NEW_REMOTE_PATH}/robots.${NEW_VERSION}.txt
+ssh $RUSER@$RC_HOST cp /var/www/testing/robots.txt ${NEW_REMOTE_PATH}/robots.txt
+ssh $RUSER@$TEST_HOST cp ${NEW_REMOTE_PATH}/robots.txt ${NEW_REMOTE_PATH}/robots.${NEW_VERSION}.txt
+ssh $RUSER@$TEST_HOST cp /var/www/testing/robots.txt ${NEW_REMOTE_PATH}/robots.txt
+set -e
 
 echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
 
+echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
+for SITE in $RC_HOST $TEST_HOST; do
+    ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/{rc,testing}"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/rc"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+done

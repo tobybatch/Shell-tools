@@ -18,7 +18,6 @@ function ntdr_bumpUp {
     BUMP=$4
 
     until [ "$BUMP" == "patch" ] || [ "$BUMP" == "minor" ] || [ "$BUMP" == "major" ]; do
-        echo -e "Current version on remote site: ${COL_GREEN}${CURRENT}${COL_RESET}"
         echo -n "Bump which version Major|mInor|Patch? [m/i/P]? "
         read a
         case $a in
@@ -120,10 +119,12 @@ function ntdr_createChangeLog {
     touch $DRUPAL_LOCAL_ROOT/changelog.txt
     echo "+----- $RELEASE -----+" > $DRUPAL_LOCAL_ROOT/changelog.new
     date +"%y-%m-%d_%H-%M" >> $DRUPAL_LOCAL_ROOT/changelog.new
+    set +e
     branches -l -p $DRUPAL_LOCAL_ROOT >> $DRUPAL_LOCAL_ROOT/changelog.new
     if [ "$?" != 0 ]; then
         echo $COL_RED"Git branches are out of sync: 'branches -l -p $DRUPAL_LOCAL_ROOT'"$COL_RESET
     fi
+    set -e
     echo -e "\n" >> $DRUPAL_LOCAL_ROOT/changelog.new
     cat $DRUPAL_LOCAL_ROOT/changelog.txt >> $DRUPAL_LOCAL_ROOT/changelog.new
     mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
@@ -180,7 +181,7 @@ function ntdr_dumpRemoteDB {
     RHOST=$2
     RPATH=$3
     DUMPFILE=$4
-    ssh $RUSER@$RHOST "drush -r $RPATH sql-dump --ordered-dump > $DUMPFILE"
+    ssh $RUSER@$RHOST "drush -r $RPATH sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE"
 }
 
 function ntdr_remotePath {
@@ -227,6 +228,35 @@ Optional Parameters
 -m mysql-root-pass
   The script expects to find the remote mysql root password in an environment
   variable MYSQL_ROOT_PASSWORD. This parameter can override that.
+EOF
+}
+
+function ntsl_usage {
+    echo $USAGE
+    cat <<EOF
+
+Send the site live.  It will:
+  * Put the site into maintenance mode
+  * Dump the live DB on the server
+  * rysnc files folder form latest over test
+  * Overwrite the testing db with the live db
+  * Copy the latest robots.txt into testing
+  * Unlock the test site
+  * Swap the sym links
+
+The 'live' site is the latest sym link and thetesting site is the testing
+symlink
+
+Optional Parameters
+-------------------
+-v
+  Be verbose
+-h
+  Print this message
+-r remote-drupal-root
+  The path to the root of the dir holding the remote drupal root. This is the
+  folder that will checked for the latest|testing|rc symlinks. Defualts to
+  /var/www
 EOF
 }
 
