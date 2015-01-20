@@ -49,7 +49,7 @@ for SITE in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing sqlc < $DUMPFILE"
 
     # pull files
-    ssh $RUSER@$SITE "rsync -a $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
+    ssh $RUSER@$SITE "rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
 
     # robots
     ssh $RUSER@$SITE "cp $DRUPAL_REMOTE_ROOT/latest/robots.txt $DRUPAL_REMOTE_ROOT/testing/robots.txt"
