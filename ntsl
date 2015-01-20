@@ -57,9 +57,10 @@ for SITE in $RC_HOST $TEST_HOST; do
     # unlock new site
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing cc all"
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing updb"
 
     # swap symlinks
-    NEW_SITE=`ssh $RUSER@$SITE "ls -d --dereference /var/www/testing"`
+    NEW_SITE=`ssh $RUSER@$SITE "realpath /var/www/testing"`
     ssh $RUSER@$SITE "rm /var/www/latest && ln -s $NEW_SITE /var/www/latest"
     ssh $RUSER@$SITE "rm /var/www/testing && ln -s testing /var/www/testingdir"
 done
