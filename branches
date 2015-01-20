@@ -71,7 +71,7 @@ for var in "$ROOTPATH"; do
             dir=`dirname $x`
             name=`basename $dir`
             if [ "$name" == "tabs-api-client" ]; then
-                continue
+              continue
             fi
             branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
             if [ ! -z "$latesttag" ]; then
