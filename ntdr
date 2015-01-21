@@ -202,5 +202,5 @@ echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
 for SITE in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/{rc,testing}"
     ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/rc"
-    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+    ssh $RUSER@$SITE "ln -s ${DRUPAL_REMOTE_ROOT}/testingdir ${DRUPAL_REMOTE_ROOT}/testing"
 done
