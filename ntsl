@@ -39,25 +39,29 @@ TEST_HOST=testing.${RHOST}
 LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
 TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
 
+if [ "$VERBOSE" == "verbose" ]; then
+    PROGRESS="-v"
+fi
+
 for SITE in $RC_HOST $TEST_HOST; do
     # lock site
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset maintenance_mode 1"
 
     # pull db
     DUMPFILE=/var/tmp/latest-`date +"%y-%m-%d_%H-%M"`.sql
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE"
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing sqlc < $DUMPFILE"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/latest sql-dump --ordered-dump --structure-tables-key=common > $DUMPFILE"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing sqlc < $DUMPFILE"
 
     # pull files
-    ssh $RUSER@$SITE "rsync -a --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
+    ssh $RUSER@$SITE "rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
 
     # robots
-    ssh $RUSER@$SITE "cp $DRUPAL_REMOTE_ROOT/latest/robots.txt $DRUPAL_REMOTE_ROOT/testing/robots.txt"
+    ssh $RUSER@$SITE "cp $PROGRESS $DRUPAL_REMOTE_ROOT/latest/robots.txt $DRUPAL_REMOTE_ROOT/testing/robots.txt"
 
     # unlock new site
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing cc all"
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/testing -y updb"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing cc all"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing -y updb"
 
     # swap symlinks
     NEW_SITE=`ssh $RUSER@$SITE "realpath /var/www/testing"`
