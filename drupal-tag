@@ -93,8 +93,8 @@ if [ "$a" == "n" ]; then
     exit
 fi
 
-cat changelog.txt >> $NEWCHANGELOG
-mv $NEWCHANGELOG changelog.txt
+cat $OLDCHANGELOG >> $NEWCHANGELOG
+mv $NEWCHANGELOG $OLDCHANGELOG
 $GITCMD commit -a -m 'Updated change log'
 $GITCMD tag $NEW_TAG
 $GITCMD push origin master --tags
