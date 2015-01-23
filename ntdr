@@ -48,7 +48,6 @@ RC_HOST=rc.${RHOST}
 TEST_HOST=testing.${RHOST}
 
 LATEST_DIR=$DRUPAL_REMOTE_ROOT/latest
-RC_DIR=$DRUPAL_REMOTE_ROOT/rc
 TESTING_DIR=$DRUPAL_REMOTE_ROOT/testing
 
 echo -e "${COL_GREEN}Initial Settings${COL_RESET}"
@@ -62,13 +61,11 @@ ntdr_debug "${COL_CYAN}RHOST${COL_RESET} ${RHOST}"
 ntdr_debug "${COL_CYAN}RC_HOST${COL_RESET} ${RC_HOST}"
 ntdr_debug "${COL_CYAN}TEST_HOST${COL_RESET} ${TEST_HOST}"
 ntdr_debug "${COL_CYAN}LATEST_DIR${COL_RESET} ${LATEST_DIR}"
-ntdr_debug "${COL_CYAN}RC_DIR${COL_RESET} ${RC_DIR}"
 ntdr_debug "${COL_CYAN}TESTING_DIR${COL_RESET} ${TESTING_DIR}"
 
 # Check remote folders exist
 echo -e "${COL_GREEN}Checking remote servers dirs${COL_RESET}"
 ntdr_checkRemoteDirExists $RUSER $RC_HOST $LATEST_DIR
-ntdr_checkRemoteDirExists $RUSER $RC_HOST $RC_DIR
 ntdr_checkRemoteDirExists $RUSER $TEST_HOST $TESTING_DIR
 
 CURRENT_LIVE_REAL_DIR=`ntdr_remotePath $RUSER $RC_HOST $LATEST_DIR`
