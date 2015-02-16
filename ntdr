@@ -158,13 +158,15 @@ echo -e "${COL_GREEN}Rsync up files${COL_RESET}"
 rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/sites/default/files $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default
 
 echo -e "${COL_GREEN}Change settings files${COL_RESET}"
-ssh $RUSER@$RC_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
-ssh $RUSER@$RC_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
-ssh $RUSER@$RC_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+for HOST in $RC_HOST $TEST_HOST; do
+    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default/settings.php
+    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default
 
-ssh $RUSER@$TEST_HOST chmod +w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
-ssh $RUSER@$TEST_HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
-ssh $RUSER@$TEST_HOST chmod -w ${NEW_REMOTE_PATH}/sites/default/settings.php ${NEW_REMOTE_PATH}/sites/default
+    ssh $RUSER@$HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
+
+    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default/settings.php
+    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default
+done
 
 echo -e "${COL_GREEN}Create new DB if needed${COL_RESET}"
 ntdr_createRemoteDB $RUSER $RC_HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
