@@ -167,7 +167,8 @@ function ntdr_createSettingFile {
     sed -i "s/      'database' => .*/      'database' => '$RELEASE',/g" $TMP_SETTINGS
     sed -i "s/      'username' => .*/      'username' => '$RELEASE',/g" $TMP_SETTINGS
     sed -i "s/      'password' => .*/      'password' => '$RELEASE',/g" $TMP_SETTINGS
-    chmod 555 $LOCAL_SETTINGS_DIR $TMP_SETTINGS
+    chmod 555 $LOCAL_SETTINGS_DIR
+    chmod 444 $TMP_SETTINGS
 }
 
 function ntdr_debug {
