@@ -159,13 +159,13 @@ rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --excl
 
 for HOST in $RC_HOST $TEST_HOST; do
     echo -e "${COL_GREEN}Change settings files on $host${COL_RESET}"
-    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default/settings.php
-    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default
+    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default/settings.php
+    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default
 
     ssh $RUSER@$HOST cp ${NEW_REMOTE_PATH}/sites/default/${NEW_VERSION}_settings.php ${NEW_REMOTE_PATH}/sites/default/settings.php
 
-    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default/settings.php
-    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default
+    ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default/settings.php
+    ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default
 
     echo -e "${COL_GREEN}Create new DB if needed on $host${COL_RESET}"
     ntdr_createRemoteDB $RUSER $host $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
