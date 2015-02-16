@@ -158,7 +158,7 @@ echo -e "${COL_GREEN}Rsync up files${COL_RESET}"
 rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/sites/default/files $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default
 
 for HOST in $RC_HOST $TEST_HOST; do
-    echo -e "${COL_GREEN}Change settings files on $host${COL_RESET}"
+    echo -e "${COL_GREEN}Change settings files on $HOST${COL_RESET}"
     ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default/settings.php
     ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default
 
@@ -167,11 +167,11 @@ for HOST in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$HOST chmod 664 ${NEW_REMOTE_PATH}/sites/default/settings.php
     ssh $RUSER@$HOST chmod 775 ${NEW_REMOTE_PATH}/sites/default
 
-    echo -e "${COL_GREEN}Create new DB if needed on $host${COL_RESET}"
-    ntdr_createRemoteDB $RUSER $host $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
+    echo -e "${COL_GREEN}Create new DB if needed on $HOST${COL_RESET}"
+    ntdr_createRemoteDB $RUSER $HOST $CURRENT_LIVE_REAL_DIR $MYSQL_ROOT_PASSWORD $NEW_VERSION
 
-    echo -e "${COL_GREEN}Fix perms on $host${COL_RESET}"
-    ssh $RUSER@$host "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
+    echo -e "${COL_GREEN}Fix perms on $HOST${COL_RESET}"
+    ssh $RUSER@$HOST "find ${NEW_REMOTE_PATH}/sites/default -type d -exec chmod 2775 {} \;"
 done
 echo -e $COL_GREEN"chmod run, I shouldn't have rights to change ownership you may need to run:"$COL_RESET
 echo -e $COL_YELLOW"  sudo chown -R www-data:www-data ${NEW_REMOTE_PATH}/sites/*/files"$COL_RESET
