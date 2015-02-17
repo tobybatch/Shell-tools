@@ -1,3 +1,57 @@
+v1.1.4
+======
+2015-02-17 12:31:00 +0000 Toby Batch  
+
+	* Show change log before making the tag (HEAD, master)
+
+2015-02-16 10:44:52 +0000 Toby Batch  
+
+	* permissions (origin/master, origin/HEAD)
+
+2015-02-16 10:39:36 +0000 Toby Batch  
+
+	* permissions
+
+2015-02-16 10:33:09 +0000 Toby Batch  
+
+	* More permissions fixing
+
+2015-02-16 10:16:20 +0000 Toby Batch  
+
+	* Split dir and file permssion resetting
+
+2015-02-16 10:07:37 +0000 Toby Batch  
+
+	* Fixed permissions on settings files
+
+2015-02-10 11:27:44 +0000 asparaguscat  
+
+	* testing symlink had target and name the wrong way round
+
+2015-01-26 13:37:19 +0000 Toby Batch  
+
+	* Added a copy of robots.txt from the themes folder
+
+2015-01-23 14:09:13 +0000 Toby Batch  
+
+	* Removed check for rc dir
+
+2015-01-22 13:26:03 +0000 Toby Batch  
+
+	* Fixed bad changelog location in branches
+
+2015-01-22 13:19:43 +0000 Toby Batch  
+
+	* Changed the way symlinks are built (again)
+
+2015-01-21 12:51:28 +0000 Toby Batch  
+
+	* Switched rsync to --size-only (origin/develop, develop)
+
+2015-01-21 12:44:44 +0000 Toby Batch  
+
+	* More link wrangling
+
 +----- v1.0.1 14-12-10_12-56 -----+
 
 2014-12-10 11:55:36 +0000 Toby batch  
