@@ -66,6 +66,8 @@ else
     CUR_TAG=$OLDBRANCH
 fi
 
+$GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master | less
+
 if [ -z "$NEWBRANCH" ]; then
     getVersionElements $CUR_TAG
     bumpUp ${MAJOR_VERSION} ${MINOR_VERSION} ${PATCH_VERSION} ${BUMP}
@@ -79,7 +81,6 @@ echo "======" >> $NEWCHANGELOG
 $GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
 
 # Preview the changes
-less $NEWCHANGELOG
 echo Current Tag: $CUR_TAG
 echo New Tag: $NEW_TAG
 
