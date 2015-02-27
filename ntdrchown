@@ -1,0 +1,5 @@
+#!/bin/bash
+
+GROUP=`id -g -n $USER`
+echo chown -R $USER:$GROUP $1
+echo chown -R www-data:www-data $1/sites/*/files
