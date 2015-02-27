@@ -64,39 +64,39 @@ for var in "$ROOTPATH"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
             GITCMD="git -C `dirname $x`"
-            if [ "$name" == "tabs-api-client" ]; then
-              continue
-            fi
-            # Fetch latest
-            if [ ! -z "$fetchorigin" ]; then
-                $GITCMD fetch origin > /dev/null
-            fi
             dir=`dirname $x`
             name=`basename $dir`
-            branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
-            if [ ! -z "$latesttag" ]; then
-                lt=`$GITCMD describe --abbrev=0 --tags 2> /dev/null`
-                diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt} 2> /dev/null`
-                if [ ! -z "$diff" ]; then
-                    printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
-                    if [ "$name" != "tabs-api-client" ]; then
-                        EXITSTATE=$(($EXITSTATE + 1))
-                    fi
-                else
-                    printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
-                fi
-            else
-                printf "\n%-25s %-20s %s\n" $name $branch $dir
-            fi
-            if [ ! -z "$newbranch" ]; then
-                # The --git-dir doesn't work in this case
-                $GITCMD stash
-                $GITCMD fetch origin --tags
-                $GITCMD show-branch $newbranch > /dev/null
-                if [ "$?" == 0 ]; then
-                    $GITCMD checkout $newbranch
-                    $GITCMD pull origin $newbranch
-                fi
+            echo ++ Processing $name
+            if [ "$name" != "tabs-api-client" ]; then
+              # Fetch latest
+              if [ ! -z "$fetchorigin" ]; then
+                $GITCMD fetch origin > /dev/null
+              fi
+              branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
+              if [ ! -z "$latesttag" ]; then
+                  lt=`$GITCMD describe --abbrev=0 --tags 2> /dev/null`
+                  diff=`$GITCMD diff refs/heads/${branch}..refs/tags/${lt} 2> /dev/null`
+                  if [ ! -z "$diff" ]; then
+                      printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
+                      if [ "$name" != "tabs-api-client" ]; then
+                          EXITSTATE=$(($EXITSTATE + 1))
+                      fi
+                  else
+                      printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
+                  fi
+              else
+                  printf "\n%-25s %-20s %s\n" $name $branch $dir
+              fi
+              if [ ! -z "$newbranch" ]; then
+                  # The --git-dir doesn't work in this case
+                  $GITCMD stash
+                  $GITCMD fetch origin --tags
+                  $GITCMD show-branch $newbranch > /dev/null
+                  if [ "$?" == 0 ]; then
+                      $GITCMD checkout $newbranch
+                      $GITCMD pull origin $newbranch
+                  fi
+              fi
             fi
         done
     fi
