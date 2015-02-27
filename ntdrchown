@@ -1,5 +1,4 @@
 #!/bin/bash
 
-GROUP=`id -g -n $USER`
-chown -R $USER:$GROUP $1
+chown -R $SUDO_USER:$SUDO_GROUP $1
 chown -R www-data:www-data $1/sites/*/files
