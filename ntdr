@@ -200,8 +200,8 @@ echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
 
-# echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
-# for SITE in $RC_HOST $TEST_HOST; do
-    # ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
-    # ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
-# done
+echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
+for SITE in $RC_HOST $TEST_HOST; do
+    ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+done
