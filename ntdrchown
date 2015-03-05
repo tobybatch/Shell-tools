@@ -1,6 +1,8 @@
 #!/bin/bash
 
-USAGE="sudo $0 [-a] PATH_TO_DRUPAL"
+set -x
+
+USAGE="sudo $0 [-a] [-u USER:GROUP] [-w USER:GROUP] PATH_TO_DRUPAL"
 
 function usage {
     echo $USAGE
@@ -11,12 +13,21 @@ and www-data.
 
 a   If the -a is set then all files are chowned to the current user and all
     rwx permission set to writtable.  Use this for rsyncing.
+u   Force the user to chown to in the format USER:GROUP. Defaults to
+    \$SUDO_USER:\$SUDO_GROUP.
+w   Force the user/group of the web user in the format USER:GROUP. Defaults to
+    www-data:www-data.  Only regarded if the -a is NOT specified
 EOF
 }
 
-while getopts "ah" options; do 
+USERGROUP=$SUDO_USER:$SUDO_GROUP
+WEBUSERGROUP=www-data:www-data
+
+while getopts "ahu:w:" options; do 
     case $options in
         a)  ALL=1;;
+        u)  USERGROUP="$OPTARG";;
+        w)  WEBUSERGROUP="$OPTARG";;
         h)  usage; exit 0;;
     esac
 done
@@ -33,12 +44,12 @@ fi
 # First chown/chmod all files to writable/owned by caller
 find $DRUPAL_ROOT -type d -exec chmod 775 {} +
 find $DRUPAL_ROOT -type f -exec chmod 664 {} +
-chown -R $SUDO_USER:$SUDO_GROUP $1
+chown -R $USERGROUP $1
 
 # if the -a flag is not set the swap files folder to www-data and
 # remove the write permissions on the files that need it
 if [ -z "$ALL" ]; then
-    chown -R www-data:www-data $DRUPAL_ROOT/sites/*/files
+    chown -R $WEBUSERGROUP $DRUPAL_ROOT/sites/*/files
     chmod 755 $DRUPAL_ROOT/sites/default
-    chmod 644 $DRUPAL_ROOT/sites/default/*
+    chmod 644 $DRUPAL_ROOT/sites/default/*.php
 fi
