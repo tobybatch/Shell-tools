@@ -147,6 +147,7 @@ if [ "$VERBOSE" != "off" ]; then
 fi
 
 ntdr_debug "Rsync down files"
+set +e
 rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default/files ${DRUPAL_LOCAL_ROOT}/sites/default
 
 ntdr_debug "Syncing to $RUSER@$RC_HOST:${NEW_REMOTE_PATH}"
@@ -156,6 +157,7 @@ rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --excl
 
 echo -e "${COL_GREEN}Rsync up files${COL_RESET}"
 rsync -a $PROGRESS --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${DRUPAL_LOCAL_ROOT}/sites/default/files $RUSER@$RC_HOST:${CURRENT_LIVE_REAL_DIR}/sites/default
+set -e
 
 for HOST in $RC_HOST $TEST_HOST; do
     echo -e "${COL_GREEN}Change settings files on $HOST${COL_RESET}"
