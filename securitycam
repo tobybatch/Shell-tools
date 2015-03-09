@@ -6,16 +6,20 @@ set -x
 # 20150219161426-01.jpg
 # 20130501091550_57.jpg
 
-ORIGIMG="/tmp/foo/95-20150219161426-01.jpg"
+# ORIGIMG="/tmp/foo/95-20150219161426-01.jpg"
 # ORIGIMG="/tmp/foo/000DC5D252CC()_0_20130501091550_57.jpg"
-ROOT='/var/tmp/cam01'
+# ROOT='/var/tmp/cam01'
+ROOT=$1
+ORIGIMG=$2
 
 ORIGIMG=`echo $ORIGIMG | sed -e "s/-/_/g"`
 
 IFS='_' read -a parts <<< "$ORIGIMG"
 
-IMG=${parts[2]}_${parts[3]}
+# IMG=${parts[1]}_${parts[2]}
 # IMG="$( cut -d '_' -f 3,4 <<< "$ORIGIMG" )"
+IMG=${parts[${#arr[@]}-2]}_${parts[${#arr[@]}-1]}
+
 YEAR="$( cut -c 1,2,3,4 <<< "$IMG" )"
 MONTH="$( cut -c 5,6 <<< "$IMG" )"
 DAY="$( cut -c 7,8 <<< "$IMG" )"
