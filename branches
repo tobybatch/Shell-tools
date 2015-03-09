@@ -66,9 +66,9 @@ for var in "$ROOTPATH"; do
             GITCMD="git -C `dirname $x`"
             dir=`dirname $x`
             name=`basename $dir`
-            if [ -z "$plainoutput" ]; then
-                echo ++ Processing $name
-            fi
+            # if [ -z "$plainoutput" ]; then
+            #     echo ++ Processing $name
+            # fi
             if [ "$name" != "tabs-api-client" ]; then
               # Fetch latest
               if [ ! -z "$fetchorigin" ]; then
