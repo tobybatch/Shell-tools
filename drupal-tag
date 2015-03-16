@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="$0 [-o CURTAG] [-n NEWTAG] [-h] [/path/to/repo]"
+USAGE="$0 [-y] [-o CURTAG] [-n NEWTAG] [-h] [/path/to/repo]"
 
 function usage {
     echo $USAGE
@@ -19,11 +19,12 @@ Tag a new release on a repo.
 EOF
 }
 
-while getopts "o:n:b:h" options; do
+while getopts "yo:n:b:h" options; do
     case $options in
         o) OLDBRANCH="$OPTARG";;
         n) NEWBRANCH="$OPTARG";;
         b) BUMP="$OPTARG";;
+        y) YES=1;;
         h) usage; exit;;
     esac
 done 
@@ -79,18 +80,20 @@ echo "======" >> $NEWCHANGELOG
 $GITCMD log --no-merges --format="%ai %aN %b %n%n%x09* %s%d%n" $CUR_TAG..master >> $NEWCHANGELOG
 
 # Preview the changes
-less $NEWCHANGELOG
-echo Current Tag: $CUR_TAG
-echo New Tag: $NEW_TAG
+if [ -z "$YES" ]; then
+    less $NEWCHANGELOG
+    echo Current Tag: $CUR_TAG
+    echo New Tag: $NEW_TAG
 
-echo "Proceed (Y/n)"
-a=0
-until [ "$a" == "y" ] || [ "$a" == "n" ]; do
-    read b
-    a=`echo $b | tr '[:upper:]' '[:lower:]'`
-done
-if [ "$a" == "n" ]; then
-    exit
+    echo "Proceed (Y/n)"
+    a=0
+    until [ "$a" == "y" ] || [ "$a" == "n" ]; do
+        read b
+        a=`echo $b | tr '[:upper:]' '[:lower:]'`
+    done
+    if [ "$a" == "n" ]; then
+        exit
+    fi
 fi
 
 cat changelog.txt >> $NEWCHANGELOG

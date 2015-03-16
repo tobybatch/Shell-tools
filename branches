@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NO_ARGS=0
-USAGE="`basename $0` [-f] [-l] [-p] [-b branch] path/to/drupal"
+USAGE="`basename $0` [-f] [-l [-a]] [-p] [-b branch] path/to/drupal"
 EXITSTATE=0
 
 function usage {
@@ -21,15 +21,18 @@ Optional a new named branch can be created and checkout out/pulled.
 -b branch
     If specified and the remote branch exists then a the branch is checked out
     and pulled. Existing changes will be stashed, and then applied.
+-a  Auto tag. If used in conjuction with -l then drupal-tag will be called with
+    a patch level bump.
 EOF
 }
 
-while getopts "b:lpf" options; do
+while getopts "b:lpfa" options; do
     case $options in
         b) newbranch="$OPTARG";;
         l) latesttag=1;;
         p) plainoutput=1;;
         f) fetchorigin=1;;
+        a) autotag=1;;
         h) usage; exit;;
     esac
 done
@@ -80,7 +83,11 @@ for var in "$ROOTPATH"; do
                 if [ ! -z "$diff" ]; then
                     printf "$COL_MAGENTA%-25s$COL_RESET %-20s $COL_RED%-10s$COL_RESET %s\n" $name $branch $lt $dir
                     if [ "$name" != "tabs-api-client" ]; then
-                        EXITSTATE=$(($EXITSTATE + 1))
+                        if [ ! -z "$autotag" ]; then
+                            drupal-tag -y -b patch $dir
+                        else
+                            EXITSTATE=$(($EXITSTATE + 1))
+                        fi
                     fi
                 else
                     printf "$COL_CYAN%-25s$COL_RESET %-20s %-10s %s\n" $name $branch $lt $dir
