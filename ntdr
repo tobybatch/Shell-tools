@@ -97,6 +97,7 @@ fi
 ntdr_debug "${COL_CYAN}NEW_VERSION${COL_RESET} ${NEW_VERSION}"
 
 NEW_REMOTE_PATH=$DRUPAL_REMOTE_ROOT/${NEW_VERSION}
+VHOST_REMOTE_PATH=$DRUPAL_REMOTE_ROOT/`echo ${NEW_VERSION} | sed -e "s|\.|_|g"`
 
 echo -e "${COL_GREEN}Preparing to remote copy${COL_RESET}"
 echo -e "\t${RUSER}@${RC_HOST}:${CURRENT_LIVE_REAL_DIR} ${RUSER}@${RC_HOST}:${NEW_REMOTE_PATH}"
@@ -204,4 +205,5 @@ echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
 for SITE in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
     ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${VHOST_REMOTE_PATH}"
 done
