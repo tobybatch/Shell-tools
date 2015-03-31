@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 CWD=`dirname $0`
 source $CWD/colours
 source $CWD/ntdr.functions.sh
@@ -66,7 +65,6 @@ for SITE in $RC_HOST $TEST_HOST; do
     # swap symlinks
     NEW_SITE=`ssh $RUSER@$SITE "realpath /var/www/testing"`
     ssh $RUSER@$SITE "rm /var/www/latest && ln -s $NEW_SITE /var/www/latest"
-    ssh $RUSER@$SITE "rm /var/www/testing && ln -s /var/www/testingdir testing"
+    ssh $RUSER@$SITE "rm /var/www/testing && ln -s /var/www/testingdir /var/www/testing"
 done
 set +e
-set +x
