@@ -12,7 +12,7 @@ source $CWD/ntdr.functions.sh
 
 NO_ARGS=0
 VERBOSE=off
-USAGE="$0 [-y] [-v] [-h] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
+USAGE="$0 [-y] [-v] [-h] [-s] [-r remote-drupal-root] [-l local-drupal-root] [[-b <major|minor|bump>] | [-f release]] [-m mysql-root-pass] remoteuser@remotehost"
 
 if [ $# -eq "$NO_ARGS" ]; then
     echo $USAGE
@@ -23,12 +23,13 @@ fi
 DRUPAL_LOCAL_ROOT=`pwd`
 DRUPAL_REMOTE_ROOT=/var/www
 
-while getopts "yr:l:b:f:m:Vvh" options; do
+while getopts "yr:l:b:f:m:Vvsh" options; do
     case $options in
         y) YES="-y";;
         v) VERBOSE='verbose';;
         V) VERBOSE='very_verbose';;
         h) ntdr_usage; exit 0;;
+        s) SKIP_SYMLINKS=1;;
         r) DRUPAL_REMOTE_ROOT="$OPTARG";;
         l) DRUPAL_LOCAL_ROOT="$OPTARG";;
         b) BUMP="$OPTARG";;
@@ -200,8 +201,10 @@ echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
 
+if [ ! -z "$SKIP_SYMLINKS" ]; then
 echo -e "${COL_GREEN}Updating symlinks${COL_RESET}"
-for SITE in $RC_HOST $TEST_HOST; do
-    ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
-    ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
-done
+    for SITE in $RC_HOST $TEST_HOST; do
+        ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
+        ssh $RUSER@$SITE "ln -s ${NEW_REMOTE_PATH} ${DRUPAL_REMOTE_ROOT}/testing"
+    done
+fi
