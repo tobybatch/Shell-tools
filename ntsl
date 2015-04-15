@@ -44,8 +44,10 @@ if [ "$VERBOSE" == "verbose" ]; then
 fi
 
 for SITE in $RC_HOST $TEST_HOST; do
-    # lock site
-    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset maintenance_mode 1"
+    # Put site into read only
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest en -y readonlymode"
+    ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset site_readonly 1"
+    # ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset maintenance_mode 1"
 
     # pull db
     DUMPFILE=/var/tmp/latest-`date +"%y-%m-%d_%H-%M"`.sql
@@ -59,14 +61,22 @@ for SITE in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$SITE "cp $PROGRESS $DRUPAL_REMOTE_ROOT/testing/sites/all/themes/*/robots.txt $DRUPAL_REMOTE_ROOT/testing/robots.txt"
 
     # unlock new site
-    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
+    # ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing vset maintenance_mode 0"
+    ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing vset site_readonly 0"
     ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing cc all"
     ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing -y updb"
 
     # swap symlinks
     NEW_SITE=`ssh $RUSER@$SITE "realpath /var/www/testing"`
-    ssh $RUSER@$SITE "rm /var/www/latest && ln -s $NEW_SITE /var/www/latest"
-    ssh $RUSER@$SITE "rm /var/www/testing && ln -s /var/www/testingdir testing"
+    if [ -e "$LATEST_DIR" ]; then
+        rm $LATEST_DIR
+    fi
+    ln -s $NEW_SITE $LATEST_DIR
+
+    if [ -e "$TESTING_DIR" ]; then
+        rm $TESTING_DIR
+    fi
+    ln -s /var/www/testingdir $TESTING_DIR
 done
 set +e
 set +x
