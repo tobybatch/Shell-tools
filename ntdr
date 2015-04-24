@@ -213,6 +213,6 @@ if [ -z "$SKIP_SYMLINKS" ]; then
         ssh $RUSER@$SITE "sudo ntdrchown ${NEW_REMOTE_PATH}"
     done
 else
-    echo -e "Skipping symlinks"
+    echo -e "${COL_YELLOW}Skipping symlinksb${COL_RESET}"
 fi
 
