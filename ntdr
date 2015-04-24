@@ -202,7 +202,7 @@ echo -e "${COL_GREEN}Drush cc all${COL_RESET}"
 drush @${NEW_VERSION}.rc cc all
 drush @${NEW_VERSION}.testing cc all
 
-if [ ! -z "$SKIP_SYMLINKS" ]; then
+if [ -z "$SKIP_SYMLINKS" ]; then
     for SITE in $RC_HOST $TEST_HOST; do
         echo -e "${COL_GREEN}Updating symlinks on ${SITE}${COL_RESET}"
         ssh $RUSER@$SITE "rm ${DRUPAL_REMOTE_ROOT}/testing"
