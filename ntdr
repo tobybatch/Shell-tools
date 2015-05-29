@@ -135,6 +135,10 @@ ntdr_createChangeLog $DRUPAL_LOCAL_ROOT $NEW_VERSION
 echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
 ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 
+for SITE in $RC_HOST $TEST_HOST; do
+    ssh $RUSER@$SITE sudo ntdrchown ${CURRENT_LIVE_REAL_DIR}
+done
+
 echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
 ssh $RUSER@$RC_HOST rsync -a --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
 ssh $RUSER@$TEST_HOST rsync -a --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_TEST_REAL_DIR}/ ${NEW_REMOTE_PATH}
