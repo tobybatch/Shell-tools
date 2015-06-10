@@ -136,8 +136,14 @@ echo -e "${COL_GREEN}Prepare settings file${COL_RESET}"
 ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 
 for SITE in $RC_HOST $TEST_HOST; do
+    echo -e "${COL_GREEN}Pre-fix permission on ${SITE}${COL_RESET}"
     ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${CURRENT_LIVE_REAL_DIR}
+    ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${CURRENT_TEST_REAL_DIR}
+    ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${NEW_REMOTE_PATH}
 done
+
+echo -e "${COL_GREEN}Pre-fix local permissions"
+sudo ntdrchown -a ${DRUPAL_LOCAL_ROOT}
 
 echo -e "${COL_GREEN}Pre-sync${COL_RESET}"
 ssh $RUSER@$RC_HOST rsync -a --size-only --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache ${CURRENT_LIVE_REAL_DIR}/ ${NEW_REMOTE_PATH}
