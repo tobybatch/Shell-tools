@@ -54,6 +54,8 @@ for SITE in $RC_HOST $TEST_HOST; do
     ssh $RUSER@$SITE "drush $PROGRESS -r $DRUPAL_REMOTE_ROOT/testing sqlc < $DUMPFILE"
 
     # pull files
+    ssh $RUSER@$SITE "ntdrchown $DRUPAL_REMOTE_ROOT/latest"
+    ssh $RUSER@$SITE "ntdrchown $DRUPAL_REMOTE_ROOT/testing"
     ssh $RUSER@$SITE "rsync -a $PROGRESS --no-p -O --no-g --exclude=tabs-imagecache --exclude=.sass-cache $DRUPAL_REMOTE_ROOT/latest/sites/default/files $DRUPAL_REMOTE_ROOT/testing/sites/default"
 
     # robots

@@ -30,7 +30,7 @@ EOF
     exit 1
 fi
 
-while getopts "u:p:h:n:" options; do
+while getopts "u:h:m:" options; do
     case $options in
         u)  user="$OPTARG";;
         m)  MYSQL_ROOT_PASSWORD="$OPTARG";;
