@@ -44,6 +44,8 @@ fi
 
 for SITE in $RC_HOST $TEST_HOST; do
     # Put site into read only
+    ssh $RUSER@$SITE "sudo ntdrchown $DRUPAL_REMOTE_ROOT/latest"
+    ssh $RUSER@$SITE "sudo ntdrchown $DRUPAL_REMOTE_ROOT/testing"
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest en -y readonlymode"
     ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset site_readonly 1"
     # ssh $RUSER@$SITE "drush -r $DRUPAL_REMOTE_ROOT/latest vset maintenance_mode 1"
