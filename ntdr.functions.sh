@@ -112,24 +112,6 @@ function ntdr_createAlias {
     sed -i "s/        'password' => .*/      'password' => '$RELEASE',/g" $ALIAS_FILE
 }
 
-function ntdr_createChangeLog {
-    DRUPAL_LOCAL_ROOT=$1
-    RELEASE=$2
-    
-    touch $DRUPAL_LOCAL_ROOT/changelog.txt
-    echo "+----- $RELEASE -----+" > $DRUPAL_LOCAL_ROOT/changelog.new
-    date +"%y-%m-%d_%H-%M" >> $DRUPAL_LOCAL_ROOT/changelog.new
-    set +e
-    branches -l -p $DRUPAL_LOCAL_ROOT >> $DRUPAL_LOCAL_ROOT/changelog.new
-    if [ "$?" != 0 ]; then
-        echo $COL_RED"Git branches are out of sync: 'branches -l -p $DRUPAL_LOCAL_ROOT'"$COL_RESET
-    fi
-    set -e
-    echo -e "\n" >> $DRUPAL_LOCAL_ROOT/changelog.new
-    cat $DRUPAL_LOCAL_ROOT/changelog.txt >> $DRUPAL_LOCAL_ROOT/changelog.new
-    mv $DRUPAL_LOCAL_ROOT/changelog.new $DRUPAL_LOCAL_ROOT/changelog.txt
-}
-
 function ntdr_createRemoteDB {
     RUSER=$1
     RHOST=$2
