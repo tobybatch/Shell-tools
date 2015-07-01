@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 USAGE="sudo $0 [-a] [-u USER:GROUP] [-w USER:GROUP] PATH_TO_DRUPAL"
 
 function usage {
