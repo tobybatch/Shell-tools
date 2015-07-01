@@ -65,12 +65,13 @@ ntdr_debug "${COL_CYAN}TESTING_DIR${COL_RESET} ${TESTING_DIR}"
 # Check remote folders exist
 echo -e "${COL_GREEN}Checking remote servers dirs${COL_RESET}"
 ntdr_checkRemoteDirExists $RUSER $RC_HOST $LATEST_DIR
+ntdr_checkRemoteDirExists $RUSER $RC_HOST $TESTING_DIR
 
 CURRENT_LIVE_REAL_DIR=`ntdr_remotePath $RUSER $RC_HOST $LATEST_DIR`
+CURRENT_TEST_REAL_DIR=`ntdr_remotePath $RUSER $RC_HOST $TESTING_DIR`
 CURRENT_LIVE_VERSION=`basename $CURRENT_LIVE_REAL_DIR`
 CURRENT_TEST_VERSION=`basename $CURRENT_TEST_REAL_DIR`
 ntdr_debug "${COL_CYAN}CURRENT_LIVE_REAL_DIR${COL_RESET} ${CURRENT_LIVE_REAL_DIR}"
-ntdr_debug "${COL_CYAN}CURRENT_TEST_REAL_DIR${COL_RESET} ${CURRENT_TEST_REAL_DIR}"
 ntdr_debug "${COL_CYAN}CURRENT_LIVE_VERSION${COL_RESET} ${CURRENT_LIVE_VERSION}"
 ntdr_debug "${COL_CYAN}CURRENT_TEST_VERSION${COL_RESET} ${CURRENT_TEST_VERSION}"
 
@@ -131,7 +132,9 @@ ntdr_createSettingFile $DRUPAL_LOCAL_ROOT $NEW_VERSION
 for SITE in $RC_HOST; do
     echo -e "${COL_GREEN}Pre-fix permission on ${SITE}${COL_RESET}"
     ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${CURRENT_LIVE_REAL_DIR}
-    ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${CURRENT_TEST_REAL_DIR}
+    if [ -e ${CURRENT_TEST_REAL_DIR}/sites/default/settings.php ]; then
+        ssh -t $RUSER@$SITE sudo /usr/local/share/Shell-tools/ntdrchown ${CURRENT_TEST_REAL_DIR}
+    fi
 done
 
 echo -e "${COL_GREEN}Pre-fix local permissions"
