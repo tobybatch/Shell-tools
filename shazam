@@ -31,14 +31,16 @@ if [ ! -d "$DR" ]; then
     exit 3
 fi
 
-SITESDIR="$DR/sites"
+sudo su - www-data -s /bin/bash -c "drush -r $DR cc all"
 
-PS3="Choose site to clear:"
-select name in $SITESDIR/*
-do 
-  break
-done
+# SITESDIR="$DR/sites"
 
-if [ ! -z "$name" ]; then
-  /usr/local/drush/drush -r $DR -l http://`basename $name` cc all
-fi
+# PS3="Choose site to clear:"
+# select name in $SITESDIR/*
+# do 
+  # break
+# done
+
+# if [ ! -z "$name" ]; then
+  # sudo su - www-data -s /bin/bash -c "drush -r $DR -l http://`basename $name` cc all"
+# fi
