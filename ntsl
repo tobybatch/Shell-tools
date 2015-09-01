@@ -42,7 +42,7 @@ if [ "$VERBOSE" == "verbose" ]; then
     PROGRESS="-v"
 fi
 
-for SITE in $RC_HOST $TEST_HOST; do
+for SITE in $RC_HOST; do
     # Put site into read only
     ssh $RUSER@$SITE "sudo ntdrchown $DRUPAL_REMOTE_ROOT/latest"
     ssh $RUSER@$SITE "sudo ntdrchown $DRUPAL_REMOTE_ROOT/testing"

@@ -66,15 +66,15 @@ fi
 for var in "$ROOTPATH"; do
     if [ -d $var ]; then
         for x in `find $var/* -name .git`; do
-            GITCMD="git -C `dirname $x`"
-            # Fetch latest
-            if [ ! -z "$fetchorigin" ]; then
-                $GITCMD fetch origin > /dev/null
-            fi
             dir=`dirname $x`
             name=`basename $dir`
             if [ "$name" == "tabs-api-client" ]; then
               continue
+            fi
+            GITCMD="git -C `dirname $x`"
+            # Fetch latest
+            if [ ! -z "$fetchorigin" ]; then
+                $GITCMD fetch origin > /dev/null
             fi
             branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
             if [ ! -z "$latesttag" ]; then
