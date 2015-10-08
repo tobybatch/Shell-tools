@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    _PATH=`pwd`
+else
+    _PATH=$1
+fi
+
+for GIT in `find $_PATH -type d -name .git`; do
+    URL=`git -C $GIT config --get remote.origin.url`
+    TARGET=`dirname $GIT`
+    mv $TARGET `dirname $TARGET`/_`basename $TARGET`
+    git clone $URL $TARGET
+done
