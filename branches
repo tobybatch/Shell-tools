@@ -65,7 +65,7 @@ fi
 
 for var in "$ROOTPATH"; do
     if [ -d $var ]; then
-        for x in `find $var/* -name .git`; do
+        for x in `find $var/* -name .git | grep -v vendor`; do
             dir=`dirname $x`
             name=`basename $dir`
             if [ "$name" == "tabs-api-client" ]; then
