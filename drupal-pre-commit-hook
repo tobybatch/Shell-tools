@@ -1,0 +1,101 @@
+#!/bin/bash
+
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
+SCRIPT=`realpath $0`
+SCRIPT_PATH=`dirname $SCRIPT`
+PROJECT=`realpath $SCRIPT_PATH/..`
+STAGED_FILES_CMD=`git status --porcelain |awk '{print $2}'`
+PHPCS=$PROJECT/vendor/bin/phpcs
+
+echo "Script: $SCRIPT"
+echo "Script path: $SCRIPT_PATH"
+echo "Root path: $PROJECT"
+echo "PHP CS: $PHPCS"
+
+which php > /dev/null
+if [ $? != 0 ]; then
+	echo "PHP not installed, please install php cli and re-commit."
+	exit 1
+fi
+
+if [ ! -e $PHPCS ]; then
+	echo "PHPCS not installed, use conpser to get it:"
+	echo "    composer install"
+	exit 1
+fi
+
+# Determine if a file list is passed
+if [ "$#" -eq 1 ]; then
+	oIFS=$IFS
+	IFS='
+	'
+	SFILES="$1"
+	IFS=$oIFS
+fi
+SFILES=${SFILES:-$STAGED_FILES_CMD}
+
+echo "Checking PHP Lint..."
+for file in $STAGED_FILES_CMD; do
+    if [ -e $file ]; then
+	    filename=$(basename "$file")
+	    ext="${filename##*.}"
+	    if [ "$ext" == "php" ] ||[ "$ext" == "module" ] ||[ "$ext" == "inc" ] ||   [ "$ext" == "install" ]; then
+		    php -l -d display_errors=0 $PROJECT/$file
+		    if [ $? != 0 ]; then
+			    echo "Fix the error before commit."
+			    exit 1
+		    fi
+	    fi
+    fi
+done
+
+echo "Checking for debug statements"
+fail=0
+for file in $STAGED_FILES_CMD; do
+    if [ -e $file ]; then
+	  debug=0
+	  filename=$(basename "$file")
+	  # echo $filename
+	  ext="${filename##*.}"
+	  if [ "$ext" == "php" ] ||[ "$ext" == "module" ] || [ "$ext" == "inc" ] || [ "$ext" == "install" ] || [ "$ext" == "js" ]; then
+		  grep "dpm(\|dvm(\|dpr(\|dvr(\|kpr(\|dargs(\|dd(\|db_queryd(\|console.log" $PROJECT/$file > /dev/null
+	      debug=$((debug + $?))
+		  echo PROJECT/$file $debug
+		  if [ $debug == 0 ]; then
+			  echo -e "Debug code found in ${COL_RED}${file}${COL_RESET}:"
+			  grep -n "dpm(\|dvm(\|dpr(\|dvr(\|kpr(\|dargs(\|dd(\|db_queryd(\|console.log" $PROJECT/$file
+              fail=1
+		  fi
+	  fi
+	fi
+done
+# echo "DEBUG = $debug"
+if [ $fail != 0 ]; then
+	echo "Codign standard errors found, exiting, no commit"
+	exit 1
+fi
+
+for file in $STAGED_FILES_CMD; do
+    if [ -e $file ]; then
+	  filename=$(basename "$file")
+	  ext="${filename##*.}"
+	  if [ "$ext" == "php" ] ||[ "$ext" == "module" ] ||[ "$ext" == "inc" ] ||   [ "$ext" == "install" ]; then
+		  echo "Running Code Sniffer..."
+		  $PHPCS --standard=Drupal --encoding=utf-8 -n -p $PROJECT/$file
+		  if [ $? != 0 ]; then
+			  echo "Fix the error before commit."
+			  exit 1
+		  fi
+	  fi
+	fi
+done
+
+exit $?
