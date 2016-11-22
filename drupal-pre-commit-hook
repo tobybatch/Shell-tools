@@ -1,5 +1,32 @@
 #!/bin/bash
 
+if [ "$1" == '--install' ]; then
+    mkdir -p $HOME/.neontabs
+    logfile=$HOME/.neontabs/$(basename $0).$(date +"%y-%m-%d_%H-%M").log
+    filelist="$(locate .git/config)"
+    this="$(realpath $0)"
+    for repo in $filelist; do
+        dotgit="$(dirname $repo)"
+        repo_root="$(dirname $dotgit)"
+        precommithook=$repo_root/.git/hooks/pre-commit
+        # Is this a drupal enabled repo
+        if [ -e $repo_root/.drupal_repo ]; then
+            # Does the precommit hook exist
+            if [ ! -e $precommithook ]; then
+                ln -s $this $precommithook
+                msg="drupal enabled, adding hook to:   $repo_root"
+                echo $msg >> $logfile
+                echo $msg
+            else
+                echo "pre-commit hook exists, skipping: $precommithook" >> $logfile
+            fi
+        else
+            echo "not a drupal repo, skipping:      $repo_root" >> $logfile
+        fi
+    done
+    exit
+fi
+
 ESC_SEQ="\x1b["
 COL_RESET=$ESC_SEQ"39;49;00m"
 COL_RED=$ESC_SEQ"31;01m"
