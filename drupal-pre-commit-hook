@@ -9,11 +9,11 @@ COL_BLUE=$ESC_SEQ"34;01m"
 COL_MAGENTA=$ESC_SEQ"35;01m"
 COL_CYAN=$ESC_SEQ"36;01m"
 
-SCRIPT=`realpath $0`
+SCRIPT=$BASH_SOURCE
 SCRIPT_PATH=`dirname $SCRIPT`
-PROJECT=`realpath $SCRIPT_PATH/..`
+PROJECT=`realpath $SCRIPT_PATH/../..`
 STAGED_FILES_CMD=`git status --porcelain |awk '{print $2}'`
-PHPCS=$PROJECT/vendor/bin/phpcs
+PHPCS=`which phpcs`
 
 echo "Script: $SCRIPT"
 echo "Script path: $SCRIPT_PATH"
@@ -66,7 +66,7 @@ for file in $STAGED_FILES_CMD; do
 	  # echo $filename
 	  ext="${filename##*.}"
 	  if [ "$ext" == "php" ] ||[ "$ext" == "module" ] || [ "$ext" == "inc" ] || [ "$ext" == "install" ] || [ "$ext" == "js" ]; then
-		  grep "dpm(\|dvm(\|dpr(\|dvr(\|kpr(\|dargs(\|dd(\|db_queryd(\|console.log" $PROJECT/$file > /dev/null
+		  grep " dpm(\| dvm(\| dpr(\| dvr(\| kpr(\| dargs(\| dd(\| db_queryd(\| console.log" $PROJECT/$file > /dev/null
 	      debug=$((debug + $?))
 		  echo PROJECT/$file $debug
 		  if [ $debug == 0 ]; then
