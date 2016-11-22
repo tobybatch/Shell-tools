@@ -1,6 +1,17 @@
 #!/bin/bash
 
 if [ "$1" == '--install' ]; then
+    which phpcs
+    if [ "$?" != 0 ]; then
+        composer global require squizlabs/php_codesniffer
+        composer global require drupal/coder
+        composer global require graphp/graphviz
+
+        echo "export PATH=$PATH:$HOME/.composer/vendor/bin/" >> ~/.bashrc
+        $HOME/.composer/vendor/bin/phpcs --config-set installed_paths $HOME/.composer/vendor/drupal/coder/coder_sniffer
+        source ~/.bashrc
+    fi
+
     mkdir -p $HOME/.neontabs
     logfile=$HOME/.neontabs/$(basename $0).$(date +"%y-%m-%d_%H-%M").log
     filelist="$(locate .git/config)"
