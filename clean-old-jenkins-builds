@@ -22,4 +22,3 @@ for build in $BUILDS_DIR/jenkins*; do
         mysql-dropuser-and-db -u $DB_NAME
     fi
 done
-
