@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for x in $(find /var/www/html/?? -maxdepth 1 -type d -mtime +30); do
+    /usr/bin/ansible-playbook \
+        -i "/var/lib/jenkins/jobs/_ntdr-pas/workspace/inventory/intranet" \
+        --vault-password-file ~/.vault_pass.txt \
+        --limit=jenkins \
+        --extra-vars="local=${x} archive=/var/tmp/old-builds/$(basename $x).tgz" \
+        /var/lib/jenkins/jobs/_ntdr-pas/workspace/clean-drupal.yml
+done
