@@ -21,17 +21,19 @@ Optional a new named branch can be created and checkout out/pulled.
 -b branch
     If specified and the remote branch exists then a the branch is checked out
     and pulled. Existing changes will be stashed, and then applied.
--a  Auto tag. If used in conjuction with -l then drupal-tag will be called with
-    a patch level bump.
+-m nakefile
+    Attempt to check the branch/tag specified in this make file for each repo
+    found. Overrides -b and implies -f
 EOF
 }
 
-while getopts "b:lpfh" options; do
+while getopts "b:lm:pfh" options; do
     case $options in
         b) newbranch="$OPTARG";;
         l) latesttag=1;;
         p) plainoutput=1;;
         f) fetchorigin=1;;
+        m) makefile="$OPTARG";;
         h) usage; exit;;
     esac
 done
@@ -73,7 +75,7 @@ for var in "$ROOTPATH"; do
             fi
             GITCMD="git -C `dirname $x`"
             # Fetch latest
-            if [ ! -z "$fetchorigin" ]; then
+            if [ ! -z "$fetchorigin" ] || [ ! -z "$makefile" ]; then
                 $GITCMD fetch origin > /dev/null
             fi
             branch=`$GITCMD branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/' | tr -d "()"`
@@ -88,11 +90,20 @@ for var in "$ROOTPATH"; do
             else
                 printf "%-25s %-20s %s\n" $name $branch $clean_dir
             fi
+            if [ ! -z "$makefile" ]; then
+                # grep 'ntbr_theme2]\[download]\[tag' ~/workspace/cottaging/ntdr-pas/files/br.make  | awk '{print $3}'
+                tag=`grep "$name]\[download]\[tag" $makefile | awk '{print $3}'`
+                echo
+                echo $tag
+                echo
+                newbranch=$tag
+            fi
             if [ ! -z "$newbranch" ]; then
                 # The --git-dir doesn't work in this case
                 $GITCMD stash
                 $GITCMD fetch origin --tags
-                $GITCMD show-branch $newbranch > /dev/null
+                # $GITCMD show-branch $newbranch > /dev/null
+                $GITCMD show-branch $newbranch
                 if [ "$?" == 0 ]; then
                     $GITCMD checkout $newbranch
                     $GITCMD pull origin $newbranch
