@@ -1,9 +1,0 @@
-#!/bin/bash
-
-curl -X POST --data "type=power_off" "https://api.digitalocean.com/v2/droplets/590041/actions" -H "Authorization: Bearer $TOKEN" 
-curl -X POST --data "type=snapshot&name=snap01" "https://api.digitalocean.com/v2/droplets/590041/actions" -H "Authorization: Bearer $TOKEN" 
-do
-    # has it finished?
-    curl -X POST --data "type=power_on" "https://api.digitalocean.com/v2/droplets/590041/actions" -H "Authorization: Bearer $TOKEN"
-done
-
