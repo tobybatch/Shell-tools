@@ -2,6 +2,7 @@
 
 source /usr/local/bin/colours
 USAGE="ghib <repo url> [issue number]"
+STORAGE=$HOME/.tobybatch/ghib
 
 which /usr/local/bin/ghi > /dev/null
 if [ "$?" != 0 ]; then
@@ -9,9 +10,19 @@ if [ "$?" != 0 ]; then
   echo "sudo gem install ghi"
 fi
 
-if [ -z "$1" ]; then
-  echo $USAGE
-  exit 1;
+if [ ! -z "$1" ]; then
+  mkdir -p $HOME/.tobybatch
+  echo $1 > $STORAGE
+  REPO=$1
+fi
+
+if [ -z "$REPO" ]; then
+  if [ -e "$STORAGE" ]; then
+    REPO=`cat $STORAGE`
+  else
+    echo $USAGE
+    exit 1;
+  fi
 fi
 
 if [ ! -z "$2" ]; then
