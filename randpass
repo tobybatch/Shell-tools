@@ -1,7 +1,8 @@
 #!/bin/bash
 
-NO_ARGS=0
-USAGE="`basename $0` [-s] [-x]"
+USAGE="$(basename "$0") [-s] [-x]"
+
+source "$(dirname "$0")/colours"
 
 function usage() {
   echo $USAGE
@@ -15,31 +16,43 @@ EOF
   exit
 }
 
-
-ESC_SEQ="\x1b["
-COL_RESET=$ESC_SEQ"39;49;00m"
-COL_RED=$ESC_SEQ"31;01m"
-COL_GREEN=$ESC_SEQ"32;01m"
-COL_YELLOW=$ESC_SEQ"33;01m"
-COL_BLUE=$ESC_SEQ"34;01m"
-COL_MAGENTA=$ESC_SEQ"35;01m"
-COL_CYAN=$ESC_SEQ"36;01m"
+source "$(dirname "$0")"/colours
 
 while getopts "hsx" options; do
   case $options in
     h)  usage;;
     x)  xkcd=1;;
     s)  safe=1;;
+    *)  echo "Unknown option";;
   esac
 done
 
 if [ -z $xkcd ]; then
   if [ -z $safe ]; then
-    pass=`</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24`
+    pass=$(</dev/urandom tr -dc 'A-Za-z0-9!@#$%&/()=' | head -c24)
   else
-    pass=`</dev/urandom tr -dc 'A-Za-z0-9' | head -c24`
+    pass=$(</dev/urandom tr -dc 'A-Za-z0-9' | head -c24)
   fi
 else
-  pass=$(cat /usr/share/dict/words |grep -v "'"|shuf -n4 | tr '[A-Z]' '[a-z]')
+  pass=$( \
+    grep -v "'" /usr/share/dict/words| \
+    shuf -n4 | \
+    sed 's/.*/\L&/g' | \
+    iconv -f utf8 -t ascii//TRANSLIT \
+    )
 fi
-echo $pass
+
+colours="$COL_RED $COL_GREEN $COL_YELLOW $COL_BLUE"
+
+for word in $pass; do
+  colour=$(echo "$colours" | awk '{print $1}')
+  echo -en "$colour""$word"
+  colours=$(echo "$colours" | awk '{$1="";print $0}')
+done
+echo -e "$COL_RESET"
+
+echo "$pass" | tr -d '\n' | xsel -ib
+
+if [ "$?" ]; then
+  echo "The password has been pushed to your clipboard, you can paste it where you want it"
+fi

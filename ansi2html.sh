@@ -97,10 +97,10 @@ processArg()
 }
 
 processArg #defaults
-for var in "$@"; do processArg $var; done
+for var in "$@"; do processArg "$var"; done
 [ "$css_only" ] && [ "$body_only" ] && usage
 
-# Mac OSX's GNU sed is installed as gsed
+# Mac OS's GNU sed is installed as gsed
 # use e.g. homebrew 'gnu-sed' to get it
 if ! sed --version >/dev/null 2>&1; then
   if gsed --version >/dev/null 2>&1; then

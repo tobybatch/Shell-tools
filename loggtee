@@ -4,4 +4,4 @@ LOGFILE=$1
 LOGTAG=$2
 LOGPORT=$3
 
-/usr/bin/tee -a $LOGFILE | /usr/bin/logger -t$LOGTAG -p$LOGPORT
+/usr/bin/tee -a "$LOGFILE" | /usr/bin/logger -t"$LOGTAG" -p"$LOGPORT"

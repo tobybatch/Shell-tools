@@ -1,8 +1,10 @@
 #!/bin/bash
 
+# Returns true if the the current terminal can show colours
+
 if test -t 1; then
-    ncolors=$(tput colors)
-    if test -n "$ncolors" && test $ncolors -ge 8; then
+    nColors=$(tput colors)
+    if test -n "$nColors" && test "$nColors" -ge 8; then
         exit 0
     else
         exit 1
