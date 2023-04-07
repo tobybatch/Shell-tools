@@ -1,4 +1,8 @@
-These scripts rely on each other so yo9u should place them all in your path.
+# Deprecated
+
+I've moved all the still needed scripts to https://github.com/tobybatch/bashdotdee
+
+These scripts rely on each other so you should place them all in your path.
 
 As root:
 
